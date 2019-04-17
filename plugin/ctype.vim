@@ -155,26 +155,29 @@ func s:TimerHandler(timer)
 	endif
 endfunc
 
-augroup ctype
-	au!
-	if exists('g:ctype_oncursorhold') && g:ctype_oncursorhold
-		au CursorHold,CursorHoldI *.c,*.cpp,*.h
-					\ if !&modified |
-					\ call ctype#GetType(function('s:ShowType')) |
-					\ else |
-					\ let g:ctype_type = '' |
-					\ endif
-	else
-		au CursorMoved,CursorMovedI *.c,*.cpp,*.h 
-					\ if !&modified |
-					\ let s:shown = 0 |
-					\ else |
-					\ let g:ctype_type = '' |
-					\ endif
-		call timer_start(g:ctype_timeout, function('s:TimerHandler'), {'repeat': -1})
-	endif
-	au BufEnter * let g:ctype_type = ''
-augroup END
+if s:server_pid != -1
+	augroup ctype
+		au!
+		if exists('g:ctype_oncursorhold') && g:ctype_oncursorhold
+			au CursorHold,CursorHoldI *.c,*.cpp,*.h
+						\ if !&modified |
+						\ call ctype#GetType(function('s:ShowType')) |
+						\ else |
+						\ let g:ctype_type = '' |
+						\ endif
+		else
+			au CursorMoved,CursorMovedI *.c,*.cpp,*.h 
+						\ if !&modified |
+						\ let s:shown = 0 |
+						\ else |
+						\ let g:ctype_type = '' |
+						\ endif
+			call timer_start(g:ctype_timeout,
+						\ function('s:TimerHandler'), {'repeat': -1})
+		endif
+		au BufEnter * let g:ctype_type = ''
+	augroup END
+endif
 
 func s:ShowType(chan, type)
 	if g:ctype_echo
