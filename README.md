@@ -33,7 +33,7 @@ Also see [options][] section below.
 
 ### g:ctype_server_backlog
 Defines the maximum length to which the queue of pending
-connections for server socket may grow. Plugin kill
+connections for server socket may grow. Plugin
 kill previous request to server before start new.
 So, in theory, this option shouldn't influence on plugin
 work.
@@ -83,7 +83,7 @@ let g:ctype_server_showerrormsg = 1
 
 ### g:ctype_client_clangcmdargs
 Defines command line arguments which will be passed to
-`clang` during `AST` file generating.
+`clang` during `AST` file generation.
 ```vim
 let g:ctype_client_clangcmdargs = '-I/usr/include/freetype2'
 ```
