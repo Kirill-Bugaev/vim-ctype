@@ -155,7 +155,6 @@ func s:TimerHandler(timer)
 	endif
 endfunc
 
-if s:server_pid != -1
 	augroup ctype
 		au!
 		if exists('g:ctype_oncursorhold') && g:ctype_oncursorhold
@@ -177,7 +176,6 @@ if s:server_pid != -1
 		endif
 		au BufEnter * let g:ctype_type = ''
 	augroup END
-endif
 
 func s:ShowType(chan, type)
 	if g:ctype_echo
