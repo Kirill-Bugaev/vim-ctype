@@ -19,6 +19,7 @@
 
 static void parsecmdargs(int, char *[]);
 static void clangcheck(void);
+static void clangcheck(void);
 static void getsockf(void);
 static void starserv(void);
 static int recvquery(void);
@@ -110,7 +111,7 @@ clangcheck(void)
 {
 	struct stat stbuf;
 	
-	if (stat(srcf, &stbuf) == -1 || !(stbuf.st_mode & S_IXUSR))
+	if (stat(clcmd, &stbuf) == -1 || !(stbuf.st_mode & S_IXUSR))
 		exit(CLCHCKERR);
 }
 
