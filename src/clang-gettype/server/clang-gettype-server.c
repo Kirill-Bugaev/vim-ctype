@@ -41,7 +41,7 @@ typedef struct tui {
 } TUi;
 
 static TUi **c;
-unsigned cf = 0;	/* cache fullness */
+static unsigned cf = 0;	/* cache fullness */
 static char *astf = NULL;
 
 static void initc(void);
