@@ -103,26 +103,28 @@ func s:ServerExit(job, exit_status)
 		if a:exit_status == 1
 			echoerr s:server_name . ": can't fork"
 		elseif a:exit_status == 2
-			echoerr s:server_name . ': invalid backlog'
+			echoerr s:server_name . ": can't close/redirect std*"
 		elseif a:exit_status == 3
-			echoerr s:server_name . ': invalid socket receive timeout'
+			echoerr s:server_name . ': invalid backlog'
 		elseif a:exit_status == 4
-			echoerr s:server_name . ': invalid cache size'
+			echoerr s:server_name . ': invalid socket receive timeout'
 		elseif a:exit_status == 5
-			echoerr s:server_name . ': clang frontend not found'
+			echoerr s:server_name . ': invalid cache size'
 		elseif a:exit_status == 6
-			echoerr s:server_name . ": can't create socket file"
+			echoerr s:server_name . ': clang frontend not found'
 		elseif a:exit_status == 7
-			echoerr s:server_name . ": can't create socket"
+			echoerr s:server_name . ": can't create socket file"
 		elseif a:exit_status == 8
-			echoerr s:server_name . ": can't assign address to socket (bind() error)"
+			echoerr s:server_name . ": can't create socket"
 		elseif a:exit_status == 9
-			echoerr s:server_name . ": can't mark socket as passive (listen() error)"
+			echoerr s:server_name . ": can't assign address to socket (bind() error)"
 		elseif a:exit_status == 10
-			echoerr s:server_name . ": can't extract connection request (accept() error)"
+			echoerr s:server_name . ": can't mark socket as passive (listen() error)"
 		elseif a:exit_status == 11
-			echoerr s:server_name . ": can't set signals handler"
+			echoerr s:server_name . ": can't extract connection request (accept() error)"
 		elseif a:exit_status == 12
+			echoerr s:server_name . ": can't set signals handler"
+		elseif a:exit_status == 13
 			echoerr s:server_name . ": can't initialize cache"
 		endif
 		echoerr s:server_name . ' exited with code = ' . a:exit_status

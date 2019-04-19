@@ -11,8 +11,10 @@
 #include <time.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <clang-c/Index.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <clang-c/Index.h>
 
 #include "config.h"
 #include "../shared.h"
@@ -35,14 +37,10 @@ typedef struct tui {
 	char *srcf;
 	time_t la;	/* last access time */
 	struct timespec mtim;
-	CXIndex *index;
-	CXTranslationUnit *tu;
+	CXIndex index;
+	CXTranslationUnit tu;
 	struct tui *next;
 } TUi;
-
-static TUi **c;
-static unsigned cf = 0;	/* cache fullness */
-static char *astf = NULL;
 
 static void initc(void);
 static long hash(char *);
@@ -55,8 +53,13 @@ static int cacheop(long, TUi **, TUi *);
 static int gettype(CXTranslationUnit);
 static int clangreq(void);
 
+static TUi **c;
+static unsigned cf = 0;	/* cache fullness */
+static char *astf = NULL;
+
 enum errors {
 	FORKERR = 1,
+	STDIOEERR,
 	BLERR,
 	RTOERR,
 	CSERR,
@@ -268,8 +271,6 @@ makeast(void)
 void
 freenp(long ci, TUi *np, TUi *prev)
 {
-	free(np->tu);
-	free(np->index);
 	free(np->srcf);
 	if (np == c[ci])	/* first in cache branch */
 		c[ci] = np->next;
@@ -303,8 +304,8 @@ findold(TUi **op, TUi **prev)
 void
 removci(long ci, TUi *np, TUi *prev)
 {
-	clang_disposeTranslationUnit(*np->tu);
-	clang_disposeIndex(*np->index);
+	clang_disposeTranslationUnit(np->tu);
+	clang_disposeIndex(np->index);
 	freenp(ci, np, prev);
 	--cf;
 }
@@ -323,15 +324,10 @@ cacheop(long ci, TUi **np, TUi *prev)
 			removci(oci, oldp, prev);
 		}
 		if (!( *np = malloc(sizeof(TUi)) ) ||
-				!( (*np)->srcf = strdup(srcf) ) ||
-				!( (*np)->index = malloc(sizeof(CXIndex)) ) ||
-				!( (*np)->tu = malloc(sizeof(CXTranslationUnit)) )) {
+				!( (*np)->srcf = strdup(srcf) ) ) {
 			if (*np) {
-				if ((*np)->srcf) {
-					if ((*np)->index)
-						free((*np)->index);
+				if ((*np)->srcf)
 					free((*np)->srcf);
-				}
 			   	free(*np);
 			}
 			return -1;
@@ -340,8 +336,8 @@ cacheop(long ci, TUi **np, TUi *prev)
 		c[ci] = *np;
 		++cf;
 	} else {
-		clang_disposeTranslationUnit(*(*np)->tu);
-		clang_disposeIndex(*(*np)->index);
+		clang_disposeTranslationUnit((*np)->tu);
+		clang_disposeIndex((*np)->index);
 	}
 
 	if (!(astf = makeast())) {
@@ -350,8 +346,8 @@ cacheop(long ci, TUi **np, TUi *prev)
 		return -1;
 	}
 	
-	*(*np)->index = clang_createIndex(0, 0);
-	*(*np)->tu = clang_createTranslationUnit(*(*np)->index, astf);
+	(*np)->index = clang_createIndex(0, 0);
+	(*np)->tu = clang_createTranslationUnit((*np)->index, astf);
 	unlink(astf);
 	free(astf);
 	astf = NULL;
@@ -414,7 +410,7 @@ clangreq(void)
 	}
 	np->la = time(NULL);
 	
-	if (gettype(*np->tu) != -1)
+	if (gettype(np->tu) != -1)
 		return 0;
 	else
 	   	return -1;
@@ -422,7 +418,7 @@ clangreq(void)
 
 void sighandler(int signo)
 {
-	if (signo == SIGINT || signo == SIGTERM) {
+	if (signo == SIGINT || signo == SIGTERM || signo == SIGHUP) {
 		if (astf) unlink(astf);
 		close(cfd);
 		close(sfd);
@@ -436,7 +432,8 @@ void sighandler(int signo)
 void catchsigs(void)
 {
 	if (signal(SIGINT, sighandler) == SIG_ERR ||
-			signal(SIGTERM, sighandler) == SIG_ERR)
+			signal(SIGTERM, sighandler) == SIG_ERR ||
+			signal(SIGHUP, sighandler) == SIG_ERR)
 		exit(SIGERR);
 }
 
@@ -451,6 +448,8 @@ main(int argc, char *argv[])
 	getsockf();
 	starserv();
 	
+#define _FORK	1
+#if defined(_FORK) && _FORK == 1
 	pid_t p = fork();
 	if (p == -1)
 		exit(FORKERR);
@@ -458,6 +457,14 @@ main(int argc, char *argv[])
 		printf("%d\n%s\n", p, sf);
 		exit(0);
 	}
+	if (close(0) == -1 || close(1) == -1 || close(2) == -1 ||
+			open("/dev/null", O_RDONLY) == -1 ||
+			open("/dev/null", O_RDWR) == -1 ||
+			open("/dev/null", O_RDWR) == -1)
+		exit(STDIOEERR);
+#else
+	printf("%s\n", sf);
+#endif
 
 	catchsigs();
 
