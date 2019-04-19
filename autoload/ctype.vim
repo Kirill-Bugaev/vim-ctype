@@ -11,8 +11,6 @@ func s:ClientExit(job, exit_status)
 	endif
 
 	let g:ctype_type = ''
-	let b:ctype_lasterror = a:exit_status
-	let b:ctype_lastmodified = system('stat -c %Y ' . fnameescape(bufname('%')))
 
 	if g:ctype_client_showerrormsg && (!exists('b:ctype_lasterror') ||
 				\ b:ctype_lasterror != a:exit_status)
@@ -31,18 +29,13 @@ func s:ClientExit(job, exit_status)
 		endif
 		echoerr s:client_name . ' exited with code = ' . a:exit_status
 	endif
+
+	let b:ctype_lasterror = a:exit_status
 endfunc
 
 func ctype#GetType(callback)
 	if job_status(s:client_job) ==# 'run'
 		call job_stop(s:client_job)
-	endif
-
-	if exists('b:ctype_lasterror') &&
-				\ b:ctype_lasterror != 0 && exists('b:ctype_lastmodified') &&
-				\ system('stat -c %Y ' . fnameescape(bufname('%'))) ==
-				\ b:ctype_lastmodified	
-		return
 	endif
 
 	let [lnum, colnum] = getcurpos()[1:2]

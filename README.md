@@ -74,6 +74,13 @@ let g:ctype_server_clangpath = '/usr/bin/clang'
 ```
 (string, default `/usr/bin/clang`)
 
+### g:ctype_server_clangpppath
+Defines path to `clang++`.
+```vim
+let g:ctype_server_clangpppath = '/usr/bin/clang++'
+```
+(string, default `/usr/bin/clang++`)
+
 ### g:ctype_server_showerrormsg
 Defines will error messages from server be shown.
 ```vim

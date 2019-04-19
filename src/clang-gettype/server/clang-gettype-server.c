@@ -107,6 +107,11 @@ parsecmdargs(int argc, char *argv[])
 	if (argc == 4) 
 		return;
 	clcmd = argv[4];
+
+	/* path to clang++ */
+	if (argc == 5) 
+		return;
+	clppcmd = argv[5];
 }
 
 void
@@ -233,9 +238,14 @@ lookup(char *srcf, TUi **np, TUi **prev)
 char *
 makeast(void)
 {
-	char *af;
+	char *clang, *ext, *af;
 	int fd;
 	unsigned cmdsize;
+
+	if ((ext = strrchr(srcf, '.')) && strcmp(ext, (char *) &".cpp") == 0)
+		clang = clppcmd;
+	else
+		clang = clcmd;
 
 	if (!( af = strdup(astff) ))
 		return NULL;
@@ -248,7 +258,7 @@ makeast(void)
 
 	pid_t p = fork();
 	if (p == 0) {
-		if (execl(clcmd, clcmd, "-emit-ast", srcf, "-o", af, clargs,
+		if (execl(clang, clang, "-emit-ast", srcf, "-o", af, clargs,
 				NULL) == -1)
 			exit(CLEXEERR);
 	} else if (p == -1) {
@@ -427,13 +437,15 @@ void sighandler(int signo)
 		rmdir(sd);
 		exit(0);
 	}
+	
 }
 
 void catchsigs(void)
 {
 	if (signal(SIGINT, sighandler) == SIG_ERR ||
 			signal(SIGTERM, sighandler) == SIG_ERR ||
-			signal(SIGHUP, sighandler) == SIG_ERR)
+			signal(SIGHUP, sighandler) == SIG_ERR ||
+			signal(SIGPIPE, sighandler) == SIG_ERR)
 		exit(SIGERR);
 }
 

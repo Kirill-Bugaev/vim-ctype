@@ -14,6 +14,11 @@ if !exists('g:ctype_server_clangpath')
 	let g:ctype_server_clangpath = '/usr/bin/clang'
 endif
 
+if !exists('g:ctype_server_clangpppath')
+	let g:ctype_server_clangpppath = '/usr/bin/clang++'
+
+endif
+
 if !exists('g:ctype_server_showerrormsg')
 	let g:ctype_server_showerrormsg = 1
 endif
@@ -51,7 +56,9 @@ let s:server_cmd = fnameescape(s:server_path) . ' ' .
 			\ g:ctype_server_backlog . ' ' .
 			\ g:ctype_server_receivetimeout . ' ' .
 			\ g:ctype_server_cachesize . ' ' .
-			\ '"' . g:ctype_server_clangpath . '"'
+			\ '"' . g:ctype_server_clangpath . '" ' .
+			\ '"' . g:ctype_server_clangpppath . '"'
+
 let s:server_name = 'clang-gettype-server'
 let s:server_pid = -1
 let s:server_uid = ''
@@ -72,14 +79,14 @@ func s:ServerResponse(chan, msg)
 		augroup ctype
 			au!
 			if exists('g:ctype_oncursorhold') && g:ctype_oncursorhold
-				au CursorHold,CursorHoldI *.c,*.cpp,*.h
+				au CursorHold,CursorHoldI *.c,*.cpp
 							\ if !&modified |
 							\ call ctype#GetType(function('s:ShowType')) |
 							\ else |
 							\ let g:ctype_type = '' |
 							\ endif
 			else
-				au CursorMoved,CursorMovedI *.c,*.cpp,*.h 
+				au CursorMoved,CursorMovedI *.c,*.cpp
 							\ if !&modified |
 							\ let s:shown = 0 |
 							\ else |
