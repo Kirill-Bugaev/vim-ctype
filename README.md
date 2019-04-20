@@ -12,7 +12,7 @@ Plugin works not with Vim buffers,
 but with files which buffers correspond. So if you have modified
 buffer you should save it before plugin can show instance type.
 Also should be noted that plugin works correctly only with
-source code which can be compiled without errors. 
+source code for which `AST` file can be created without errors. 
 
 Main part is `clang-gettype` utility is written on C.
 It based on client-server architecture using unix domain sockets.
