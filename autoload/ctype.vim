@@ -47,7 +47,7 @@ func ctype#GetType(callback)
 	let [lnum, colnum] = getcurpos()[1:2]
 	let cmd = fnameescape(s:client_path) . ' ' .
 				\ fnameescape(g:ctype_socket_file) . ' ' .
-				\ fnameescape(bufname('%'))
+				\ fnameescape(expand('%:p'))
 
 	" working dir
 	if g:ctype_cdb_method > 0

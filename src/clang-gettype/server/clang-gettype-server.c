@@ -286,12 +286,12 @@ makeast(void)
 		/* --- child process --- */
 		if (chdir(wd) == -1)
 			exit(CLCHDIRERR);
-		char *fn = getfn(srcf);
+//		char *fn = getfn(srcf);
 		char *cmd;
 		/* cmd = clang + " -working-directory=" + "'" + wd + "'" +
-		 * " -emit-ast " + "'" + fn + "'" + " -o " + af + " " + clargs */
+		 * " -emit-ast " + "'" + srcf + "'" + " -o " + af + " " + clargs */
 		if (!( cmd = malloc(strlen(clang) + sizeof("-working-directory='") +
-				strlen(wd) + sizeof("' -emit-ast ") + strlen(fn) +
+				strlen(wd) + sizeof("' -emit-ast ") + strlen(srcf) +
 			   	sizeof("' -o") + strlen(af) + 1 + strlen(clargs)) ))
 			exit(CLMEMERR);
 		*cmd = '\0';
@@ -299,14 +299,14 @@ makeast(void)
 		strcat(cmd, " -working-directory='");
 		strcat(cmd, wd);
 		strcat(cmd, "' -emit-ast '");
-		strcat(cmd, fn);
+		strcat(cmd, srcf);
 		strcat(cmd, "' -o ");
 		strcat(cmd, af);
 		strcat(cmd, " ");
 		strcat(cmd, clargs);
 		if (execl("/bin/sh", "sh", "-c", cmd, NULL) == -1)
 			exit(CLEXEERR);
-		free(fn);
+//		free(fn);
 		free(cmd);
 		/* --- end of child process --- */
 	} else if (p == -1) {
