@@ -167,9 +167,5 @@ let g:ctype_updatestl = 1
 ```
 (boolean, default `undefined`)
 
-## TODO
-* process `compile_flags.txt` and `compile_commands.json`
-for source code file
-
 [clang]: https://clang.llvm.org/
 [Options]: #Options
