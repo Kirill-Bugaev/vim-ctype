@@ -60,7 +60,7 @@ func s:ChooseCompileCommand(job)
 		" Load first valid command
 		let g:ctype_cdb[bufnum] = cmds[0]
 	else 
-		call s:LoadEmptyCompileCommand(bufnum)
+		call s:LoadEmptyCompileCommand(bufnum, filename)
 	endif
 endfunc
 
