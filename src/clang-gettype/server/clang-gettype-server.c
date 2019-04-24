@@ -29,6 +29,7 @@ static int sendtype(void);
 
 static int cfd;
 static char srcf[PATH_MAX];
+static char wd[PATH_MAX];
 
 static void sighandler(int);
 static void catchsigs(void);
@@ -45,6 +46,7 @@ typedef struct tui {
 static void initc(void);
 static long hash(char *);
 static long lookup(char *, TUi **, TUi **);
+static char *getfn(char *);
 static char *makeast(void);
 static void freenp(long, TUi *, TUi *);
 static long findold(TUi **, TUi **);
@@ -71,6 +73,10 @@ enum errors {
 	ACCERR,
 	SIGERR,
 	INICERR,
+	GETFNERR,
+	FESCERR,
+	CLCHDIRERR,
+	CLMEMERR,
 	CLEXEERR,
 };
 
@@ -169,6 +175,8 @@ recvquery(void)
 	
 	if ( read(cfd, &srcf_s, sizeof(srcf_s)) != sizeof(srcf_s) ||
 			read(cfd, srcf, srcf_s) != srcf_s ||
+			read(cfd, &wd_s, sizeof(wd_s)) != sizeof(wd_s) ||
+			read(cfd, wd, wd_s) != wd_s ||
 			read(cfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
 			read(cfd, &col, sizeof(col)) != sizeof(col) )
 		return -1;
@@ -187,6 +195,10 @@ recvquery(void)
 			clargs = NULL;
 			return -1;
 		}
+	} else {
+		if (!(clargs = malloc(1)))
+			return -1;
+		*clargs = '\0';
 	}
 
 	return 0;
@@ -236,6 +248,19 @@ lookup(char *srcf, TUi **np, TUi **prev)
 }
 
 char *
+getfn(char *path)
+{
+	char *p, *fn;
+
+	for (p = path + strlen(path); p >= path; --p)
+		if (*p == '/')
+			break;
+	if (!(fn = strdup(p + 1)))
+		exit(GETFNERR);
+	return fn;
+}
+
+char *
 makeast(void)
 {
 	char *clang, *ext, *af;
@@ -258,9 +283,32 @@ makeast(void)
 
 	pid_t p = fork();
 	if (p == 0) {
-		if (execl(clang, clang, "-emit-ast", srcf, "-o", af, clargs,
-				NULL) == -1)
+		/* --- child process --- */
+		if (chdir(wd) == -1)
+			exit(CLCHDIRERR);
+		char *fn = getfn(srcf);
+		char *cmd;
+		/* cmd = clang + " -working-directory=" + "'" + wd + "'" +
+		 * " -emit-ast " + "'" + fn + "'" + " -o " + af + " " + clargs */
+		if (!( cmd = malloc(strlen(clang) + sizeof("-working-directory='") +
+				strlen(wd) + sizeof("' -emit-ast ") + strlen(fn) +
+			   	sizeof("' -o") + strlen(af) + 1 + strlen(clargs)) ))
+			exit(CLMEMERR);
+		*cmd = '\0';
+		strcat(cmd, clang);
+		strcat(cmd, " -working-directory='");
+		strcat(cmd, wd);
+		strcat(cmd, "' -emit-ast '");
+		strcat(cmd, fn);
+		strcat(cmd, "' -o ");
+		strcat(cmd, af);
+		strcat(cmd, " ");
+		strcat(cmd, clargs);
+		if (execl("/bin/sh", "sh", "-c", cmd, NULL) == -1)
 			exit(CLEXEERR);
+		free(fn);
+		free(cmd);
+		/* --- end of child process --- */
 	} else if (p == -1) {
 		free(af);
 		return NULL;

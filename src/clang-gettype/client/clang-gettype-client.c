@@ -13,6 +13,7 @@ static void sendreq(void);
 static void recvtype(void);
 
 static char *srcf;
+static char *wd;
 
 enum errors {
 	ARGNERR = 1,
@@ -28,27 +29,29 @@ parsecmdargs(int argc, char *argv[])
 {
 	char *endptr;
 	
-	if (argc < 5)
+	if (argc < 6)
 		exit(ARGNERR);
 
 	sf = argv[1];
 	srcf = argv[2];
 	srcf_s = strlen(srcf) + 1;
+	wd = argv[3];
+	wd_s = strlen(wd) + 1;
 
 	errno = 0;
-	lnum = strtol(argv[3], &endptr, 10);
+	lnum = strtol(argv[4], &endptr, 10);
 	if (errno != 0 || *endptr != '\0' || lnum <= 0)
 		exit(CRDERR);
 	
 	errno = 0;
-	col = strtol(argv[4], &endptr, 10);
+	col = strtol(argv[5], &endptr, 10);
 	if (errno != 0 || *endptr != '\0' || col <= 0)
 		exit(CRDERR);
 
 	/* clang cmd args */
-	if (argc == 5)
+	if (argc == 6)
 		return;
-	clargs = argv[5];
+	clargs = argv[6];
 	clargs_s = strlen(clargs) + 1;
 }
 
@@ -71,7 +74,9 @@ void
 sendreq(void)
 {
 	if ( write(sfd, &srcf_s, sizeof(srcf_s)) != sizeof(srcf_s) ||
-			write(sfd, srcf,  srcf_s) != srcf_s ||
+			write(sfd, srcf, srcf_s) != srcf_s ||
+			write(sfd, &wd_s, sizeof(wd_s)) != sizeof(wd_s) ||
+			write(sfd, wd, wd_s) != wd_s ||
 			write(sfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
 			write(sfd, &col, sizeof(col)) != sizeof(col) ||
 			write(sfd, &clargs_s, sizeof(clargs_s)) != sizeof(clargs_s) ||

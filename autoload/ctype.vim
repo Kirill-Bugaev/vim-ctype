@@ -38,13 +38,37 @@ func ctype#GetType(callback)
 		call job_stop(s:client_job)
 	endif
 
+	if g:ctype_cdb_method > 0
+		if !exists('g:ctype_cdb[' . bufnr('%') . ']')
+			return
+		endif
+	endif
+
 	let [lnum, colnum] = getcurpos()[1:2]
 	let cmd = fnameescape(s:client_path) . ' ' .
 				\ fnameescape(g:ctype_socket_file) . ' ' .
-				\ fnameescape(bufname('%')) . ' ' .
-				\ lnum . ' ' .
-				\ colnum . ' ' .
-				\ '"' . g:ctype_client_clangcmdargs . '"'
+				\ fnameescape(bufname('%'))
+
+	" working dir
+	if g:ctype_cdb_method > 0
+		let cmd .= ' ' . fnameescape(g:ctype_cdb[bufnr('%')].workingdir)
+	else
+		let cmd .= ' ' . fnameescape(expand('%:p:h'))
+	endif
+
+	let cmd .=  ' ' . lnum . ' ' . colnum
+
+	let cmd .= ' "'
+
+	" cdb args
+	if g:ctype_cdb_method > 0
+		let cmd .= g:ctype_cdb[bufnr('%')].cmdargs . ' '
+	endif
+
+	let cmd .= g:ctype_client_clangcmdargs
+
+	let cmd .= '"'
+
 	let s:client_job = job_start(cmd,
 				\ {'out_cb': a:callback,
 				\ 'exit_cb': function('s:ClientExit')})

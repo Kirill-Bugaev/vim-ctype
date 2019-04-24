@@ -3,6 +3,7 @@ static struct sockaddr_un addr;
 static int sfd;
 
 static int srcf_s;
+static int wd_s;
 static long lnum, col;
 static char *clargs = NULL;
 static int clargs_s = 0;
