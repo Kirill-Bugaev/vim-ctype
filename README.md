@@ -333,8 +333,8 @@ because allows specify arguments for each source code
 file of project separately) with arguments obtained above.
 
 
-`compile_flags.txt`
 ```
+# compile_flags.txt
 -D HAVE_CONFIG_H
 -I .
 -I lib/kui
@@ -345,10 +345,9 @@ file of project separately) with arguments obtained above.
 ```
 
 
-
-`compile_commands.json` (replace `directory` entry with your
-`cgdb` project root directory)
 ```
+# compile_commands.json (replace `directory` entry with your
+# `cgdb` project root directory):
 [
 	{
 		"directory": "/data/Downloads/cgdb-make",
