@@ -188,13 +188,13 @@ After running this command or adding
 `CMakeLists.txt` script `compile_commands.json` file appears
 in project root directory. It contains command line arguments 
 for compilation process well then required for making `AST`
-file. If `g:ctype_cdb_method` is setted `1` or `2` plugin will
-find compilation arguments in this file automatically and use
-it for making `AST`.
+file. If `g:ctype_cdb_method` option is setted `1` or `2`
+plugin will find compilation arguments in this file
+automatically and use it for making `AST`.
 
 ### Make
 If project uses `Make` for compilation process Compilation
-Database can be created manually. Let's view such case on
+Database can be created manually. Let's view such case
 simple example.
 
 Assume we want to browse in Vim and watch types of instances
