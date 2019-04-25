@@ -300,7 +300,7 @@ cgdb/cgdb.cpp:1634:24: error: use of undeclared identifier 'TIOCSWINSZ'
 
 Now it looks like `./cgdb/cgdb.cpp` source code file contains
 syntax error, but more likely that we don't pass preprocessor
-argument like `-D...` is required for compilation. Let's run
+arguments like `-D...` is required for compilation. Let's run
 `make` to check it.
 
 ```shell
@@ -332,6 +332,7 @@ You should create `compile_flags.txt` or
 because allows specify arguments for each source code
 file of project separately) with arguments obtained above.
 
+
 `compile_flags.txt`
 ```
 -D HAVE_CONFIG_H
@@ -342,6 +343,7 @@ file of project separately) with arguments obtained above.
 -I lib/tokenizer
 -I lib/util
 ```
+
 
 
 `compile_commands.json` (replace `directory` entry with your
@@ -375,7 +377,9 @@ file manually because `clang` creates it without, which is not
 correct.
 
 ```
-$ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline -I lib/tgdb -I lib/tokenizer -I lib/util -I . -D HAVE_CONFIG_H -MJ compile_commands.json
+$ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline
+-I lib/tgdb -I lib/tokenizer -I lib/util -I . -D HAVE_CONFIG_H -MJ
+compile_commands.json
 ```
 
 [clang]: https://clang.llvm.org/
