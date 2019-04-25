@@ -378,9 +378,7 @@ file manually because `clang` creates it without, which is not
 correct.
 
 ```
-$ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline
--I lib/tgdb -I lib/tokenizer -I lib/util -I . -D HAVE_CONFIG_H -MJ
-compile_commands.json
+$ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline -I lib/tgdb -I lib/tokenizer -I lib/util -I . -D HAVE_CONFIG_H -MJ compile_commands.json
 ```
 
 [clang]: https://clang.llvm.org/
