@@ -27,6 +27,7 @@ static unsigned s;				/* size of fns, wds and ccsargs */
 enum errors {
 	ARGNERR = 1,
 	METHERR,
+	NOSRCERR,
 	MEMERR,
 	CHDIRERR,
 	CLEXEERR,
@@ -227,7 +228,10 @@ main(int argc, char *argv[])
 	else
 		clang = clcmd;
 
-	if (!(srcf = realpath(srcf, NULL)) || !(cdb_sp = strdup(srcf)))
+	if (!(srcf = realpath(srcf, NULL)))
+		exit(NOSRCERR);
+
+	if (!(cdb_sp = strdup(srcf)))
 		exit(MEMERR);
 	
 	while ((cdb = getcdb()) && (m == 2 || !ccfound)) {
