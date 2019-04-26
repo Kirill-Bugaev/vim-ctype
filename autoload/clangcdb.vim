@@ -87,8 +87,8 @@ func s:ClangCDB_Exit(job, exit_status)
 		elseif a:exit_status == 7
 			echoerr s:clangcdb_name . ': fork error'
 		elseif a:exit_status == 8
-			echom s:clangcdb_name . ': no Compilation Database found for file "' .
-						\ g:ctype_chan_cdb[chid].filename . '"'
+			echom s:clangcdb_name . ': no Compilation Database found for "' .
+						\ g:ctype_chan_cdb[chid].filename . '" file'
 		endif
 		if a:exit_status != 3 && a:exit_status != 8
 			echoerr 'for source file "' . g:ctype_chan_cdb[chid].filename .
