@@ -1,6 +1,6 @@
 let s:plugin_path = expand('<sfile>:p:h')
-let s:client_path = s:plugin_path . '/../bin/clang-gettype-client'
-let s:client_name = 'clang-gettype-client'
+let s:client_path = s:plugin_path . '/../bin/ctype/client'
+let s:client_name = 'client'
 
 let s:client_job = job_start('none')
 
@@ -15,19 +15,19 @@ func s:ClientExit(job, exit_status)
 	if g:ctype_client_showerrormsg && (!exists('b:ctype_lasterror') ||
 				\ b:ctype_lasterror != a:exit_status)
 		if a:exit_status == 1
-			echoerr s:client_name . ': not enough arguments'
+			echoerr g:ctype_prefixname . s:client_name . ': not enough arguments'
 		elseif a:exit_status == 2
-			echoerr s:client_name . ': invalid cursor position'
+			echoerr g:ctype_prefixname . s:client_name . ': invalid cursor position'
 		elseif a:exit_status == 3
-			echoerr s:client_name . ": can't create socket"
+			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
 		elseif a:exit_status == 4
-			echoerr s:client_name . ": can't connect to server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
 		elseif a:exit_status == 5
-			echoerr s:client_name . ": can't send request to server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
 		elseif a:exit_status == 6
-			echoerr s:client_name . ": can't receive data from server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't receive data from server"
 		endif
-		echoerr s:client_name . ' exited with code = ' . a:exit_status
+		echoerr g:ctype_prefixname . s:client_name . ' exited with code = ' . a:exit_status
 	endif
 
 	let b:ctype_lasterror = a:exit_status
@@ -62,10 +62,10 @@ func ctype#GetType(callback)
 
 	" cdb args
 	if g:ctype_cdb_method > 0
-		let cmd .= g:ctype_cdb[bufnr('%')].cmdargs . ' '
+		let cmd .= fnameescape(g:ctype_cdb[bufnr('%')].cmdargs) . ' '
 	endif
 
-	let cmd .= g:ctype_client_clangcmdargs
+	let cmd .= fnameescape(g:ctype_client_clangcmdargs)
 
 	let cmd .= '"'
 

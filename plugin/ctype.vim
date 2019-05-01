@@ -55,11 +55,12 @@ if !exists('g:ctype_updatestl')
 	endif
 endif
 
+let g:ctype_prefixname = 'ctype-'
 let g:ctype_socket_file = 'empty'
 let g:ctype_type = ''
 
 let s:plugin_path = expand('<sfile>:p:h')
-let s:server_path = s:plugin_path . '/../bin/clang-gettype-server'
+let s:server_path = s:plugin_path . '/../bin/ctype/server'
 let s:server_cmd = fnameescape(s:server_path) . ' ' .
 			\ g:ctype_server_backlog . ' ' .
 			\ g:ctype_server_receivetimeout . ' ' .
@@ -67,7 +68,7 @@ let s:server_cmd = fnameescape(s:server_path) . ' ' .
 			\ '"' . g:ctype_server_clangpath . '" ' .
 			\ '"' . g:ctype_server_clangpppath . '"'
 
-let s:server_name = 'clang-gettype-server'
+let s:server_name = 'server'
 let s:server_pid = -1
 let s:server_uid = ''
 let s:server_response_count = 0
@@ -80,7 +81,7 @@ func s:ServerResponse(chan, msg)
 		if s:server_uid !~ s:server_name
 			let server_pid = -1
 			let s:server_uid = ''
-			echoerr 'vim-ctype: ' . s:server_name . ' failed'
+			echoerr 'vim-ctype: ' . g:ctype_prefixname . s:server_name . ' failed'
 		endif
 	elseif s:server_response_count == 1
 		let g:ctype_socket_file = a:msg
@@ -116,33 +117,33 @@ func s:ServerExit(job, exit_status)
 
 	if g:ctype_server_showerrormsg
 		if a:exit_status == 1
-			echoerr s:server_name . ": can't fork"
+			echoerr g:ctype_prefixname . s:server_name . ": can't fork"
 		elseif a:exit_status == 2
-			echoerr s:server_name . ": can't close/redirect std*"
+			echoerr g:ctype_prefixname . s:server_name . ": can't close/redirect std*"
 		elseif a:exit_status == 3
-			echoerr s:server_name . ': invalid backlog'
+			echoerr g:ctype_prefixname . s:server_name . ': invalid backlog'
 		elseif a:exit_status == 4
-			echoerr s:server_name . ': invalid socket receive timeout'
+			echoerr g:ctype_prefixname . s:server_name . ': invalid socket receive timeout'
 		elseif a:exit_status == 5
-			echoerr s:server_name . ': invalid cache size'
+			echoerr g:ctype_prefixname . s:server_name . ': invalid cache size'
 		elseif a:exit_status == 6
-			echoerr s:server_name . ': clang frontend not found'
+			echoerr g:ctype_prefixname . s:server_name . ': clang frontend not found'
 		elseif a:exit_status == 7
-			echoerr s:server_name . ": can't create socket file"
+			echoerr g:ctype_prefixname . s:server_name . ": can't create socket file"
 		elseif a:exit_status == 8
-			echoerr s:server_name . ": can't create socket"
+			echoerr g:ctype_prefixname . s:server_name . ": can't create socket"
 		elseif a:exit_status == 9
-			echoerr s:server_name . ": can't assign address to socket (bind() error)"
+			echoerr g:ctype_prefixname . s:server_name . ": can't assign address to socket (bind() error)"
 		elseif a:exit_status == 10
-			echoerr s:server_name . ": can't mark socket as passive (listen() error)"
+			echoerr g:ctype_prefixname . s:server_name . ": can't mark socket as passive (listen() error)"
 		elseif a:exit_status == 11
-			echoerr s:server_name . ": can't extract connection request (accept() error)"
+			echoerr g:ctype_prefixname . s:server_name . ": can't extract connection request (accept() error)"
 		elseif a:exit_status == 12
-			echoerr s:server_name . ": can't set signals handler"
+			echoerr g:ctype_prefixname . s:server_name . ": can't set signals handler"
 		elseif a:exit_status == 13
-			echoerr s:server_name . ": can't initialize cache"
+			echoerr g:ctype_prefixname . s:server_name . ": can't initialize cache"
 		endif
-		echoerr s:server_name . ' exited with code = ' . a:exit_status
+		echoerr g:ctype_prefixname . s:server_name . ' exited with code = ' . a:exit_status
 	endif
 endfunc
 
@@ -151,7 +152,7 @@ let s:server_job = job_start(s:server_cmd,
 			\ {'out_cb': function('s:ServerResponse'),
 			\ 'exit_cb': function('s:ServerExit')})
 if job_status(s:server_job) ==# 'fail'
-	echoerr "vim-ctype: can't start " . s:server_name
+	echoerr "vim-ctype: can't start " . g:ctype_prefixname . s:server_name
 endif
 
 func s:KillServer()
@@ -203,9 +204,9 @@ func s:ShowType(chan, type)
 	endif
 endfunc
 
-" clang cdb facility
+" cdb facility
 if g:ctype_cdb_method > 0
-	augroup clang-cdb
+	augroup ctype-cdb
 		au!
 		au VimEnter * call s:LoadCDB_OnVimEnter()
 		au BufAdd *.c,*.cpp call s:LoadCDB_OnBufAdd()
@@ -220,14 +221,14 @@ func s:LoadCDB_OnVimEnter()
 	for buf_i in getbufinfo()
 		let buf_ft = fnamemodify(buf_i.name, ':e')
 		if buf_ft ==# 'c' || buf_ft ==# 'cpp'
-			call clangcdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr),
+			call ctypecdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr),
 						\ g:ctype_cdb_method, function('s:CDB_Response'))
 		endif
 	endfor
 endfunc
 
 func s:LoadCDB_OnBufAdd()
-	call clangcdb#GetCDB_Entries(expand('<abuf>'), expand('<afile>'),
+	call ctypecdb#GetCDB_Entries(expand('<abuf>'), expand('<afile>'),
 				\ g:ctype_cdb_method, function('s:CDB_Response'))
 endfunc
 

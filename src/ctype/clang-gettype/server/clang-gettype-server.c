@@ -18,6 +18,7 @@
 
 #include "config.h"
 #include "../shared.h"
+#include "../../shared.h"
 
 static void parsecmdargs(int, char *[]);
 static void clangcheck(void);
@@ -76,6 +77,7 @@ enum errors {
 	GETFNERR,
 	FESCERR,
 	CLCHDIRERR,
+	CLESCERR,
 	CLMEMERR,
 	CLEXEERR,
 };
@@ -286,27 +288,39 @@ makeast(void)
 		/* --- child process --- */
 		if (chdir(wd) == -1)
 			exit(CLCHDIRERR);
+
+		char *ewd, *esrcf, *eclargs;
+		if (!(ewd = expesc(wd)))
+			exit(CLESCERR);
+		if (!(esrcf = expesc(srcf)))
+			exit(CLESCERR);
+		if (!(eclargs = expesc(clargs)))
+			exit(CLESCERR);
+
 //		char *fn = getfn(srcf);
 		char *cmd;
-		/* cmd = clang + " -working-directory=" + "'" + wd + "'" +
-		 * " -emit-ast " + "'" + srcf + "'" + " -o " + af + " " + clargs */
+		/* cmd = clang + " -working-directory=" + "'" + ewd + "'" +
+		 * " -emit-ast " + "'" + esrcf + "'" + " -o " + af + " " + eclargs */
 		if (!( cmd = malloc(strlen(clang) + sizeof("-working-directory='") +
-				strlen(wd) + sizeof("' -emit-ast ") + strlen(srcf) +
-			   	sizeof("' -o") + strlen(af) + 1 + strlen(clargs)) ))
+				strlen(ewd) + sizeof("' -emit-ast ") + strlen(esrcf) +
+			   	sizeof("' -o") + strlen(af) + 1 + strlen(eclargs)) ))
 			exit(CLMEMERR);
 		*cmd = '\0';
 		strcat(cmd, clang);
 		strcat(cmd, " -working-directory='");
-		strcat(cmd, wd);
+		strcat(cmd, ewd);
 		strcat(cmd, "' -emit-ast '");
-		strcat(cmd, srcf);
+		strcat(cmd, esrcf);
 		strcat(cmd, "' -o ");
 		strcat(cmd, af);
 		strcat(cmd, " ");
-		strcat(cmd, clargs);
+		strcat(cmd, eclargs);
 		if (execl("/bin/sh", "sh", "-c", cmd, NULL) == -1)
 			exit(CLEXEERR);
 //		free(fn);
+		free(ewd);
+		free(esrcf);
+		free(eclargs);
 		free(cmd);
 		/* --- end of child process --- */
 	} else if (p == -1) {

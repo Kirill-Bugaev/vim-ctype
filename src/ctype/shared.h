@@ -1,0 +1,1 @@
+char *expesc(const char *);

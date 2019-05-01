@@ -8,6 +8,7 @@
 #include <clang-c/CXCompilationDatabase.h>
 
 #include "config.h"
+#include "../shared.h"
 
 static void parsecmdargs(int, char *[]);
 static CXCompilationDatabase getcdb();
@@ -30,6 +31,7 @@ enum errors {
 	NOSRCERR,
 	MEMERR,
 	CHDIRERR,
+	ESCERR,
 	CLEXEERR,
 	FORKERR,
 	NOCDBERR,
@@ -159,22 +161,33 @@ void getccs(CXCompilationDatabase cdb)
 			if (chdir(wd) == -1)
 				exit(CHDIRERR);
 			
-			/* cmd = clang + " -working-directory=" + "'" + wd + "'" +
-			 * " -emit-ast " + "'" + fn + "'" + " -o /dev/null " + args */
+			char *ewd, *efn, *eargs;
+			if (!(ewd = expesc(wd)))
+				exit(ESCERR);
+			if (!(efn = expesc(fn)))
+				exit(ESCERR);
+			if (!(eargs = expesc(args)))
+				exit(ESCERR);
+
+			/* cmd = clang + " -working-directory=" + "'" + ewd + "'" +
+			 * " -emit-ast " + "'" + efn + "'" + " -o /dev/null " + eargs */
 			char *cmd = malloc(strlen(clang) + sizeof("-working-directory='") +
-					strlen(wd) + sizeof("' -emit-ast ") + strlen(fn) +
-				   	sizeof("' -o /dev/null") + strlen(args));
+					strlen(ewd) + sizeof("' -emit-ast ") + strlen(efn) +
+				   	sizeof("' -o /dev/null") + strlen(eargs));
 			*cmd = '\0';
 			strcat(cmd, clang);
 			strcat(cmd, " -working-directory='");
-			strcat(cmd, wd);
+			strcat(cmd, ewd);
 			strcat(cmd, "' -emit-ast '");
-			strcat(cmd, srcf);
+			strcat(cmd, efn);
 			strcat(cmd, "' -o /dev/null ");
-			strcat(cmd, args);
+			strcat(cmd, eargs);
 
 			if (execl("/bin/sh", "sh", "-c", cmd, NULL) == -1)
 				exit(CLEXEERR);
+			free(ewd);
+			free(efn);
+			free(eargs);
 			free(cmd);
 			/* --- end of child process --- */
 		} else if (p == -1)

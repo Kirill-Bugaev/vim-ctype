@@ -1,6 +1,6 @@
 let s:plugin_path = expand('<sfile>:p:h')
-let s:clangcdb_path = s:plugin_path . '/../bin/clang-cdb'
-let s:clangcdb_name = 'clang-cdb'
+let s:clangcdb_path = s:plugin_path . '/../bin/ctype/cdb'
+let s:clangcdb_name = 'cdb'
 
 func s:LoadEmptyCompileCommand(bufnum, filename)
 	let g:ctype_cdb[a:bufnum] = {}
@@ -77,22 +77,22 @@ func s:ClangCDB_Exit(job, exit_status)
 	
 	if g:ctype_cdb_showerrormsg
 		if a:exit_status == 1
-			echoerr s:clangcdb_name . ': not enough arguments'
+			echoerr g:ctype_prefixname . s:clangcdb_name . ': not enough arguments'
 		elseif a:exit_status == 2
-			echoerr s:clangcdb_name . ': wrong method'
+			echoerr g:ctype_prefixname . s:clangcdb_name . ': wrong method'
 		elseif a:exit_status == 3
-			echom s:clangcdb_name . ": can't get source file path"
+			echom g:ctype_prefixname . s:clangcdb_name . ": can't get source file path"
 		elseif a:exit_status == 4
-			echoerr s:clangcdb_name . ': memory allocation error'
-		elseif a:exit_status == 7
-			echoerr s:clangcdb_name . ': fork error'
+			echoerr g:ctype_prefixname . s:clangcdb_name . ': memory allocation error'
 		elseif a:exit_status == 8
-			echom s:clangcdb_name . ': no Compilation Database found for "' .
+			echoerr g:ctype_prefixname . s:clangcdb_name . ': fork error'
+		elseif a:exit_status == 9
+			echom g:ctype_prefixname . s:clangcdb_name . ': no Compilation Database found for "' .
 						\ g:ctype_chan_cdb[chid].filename . '" file'
 		endif
-		if a:exit_status != 3 && a:exit_status != 8
+		if a:exit_status != 3 && a:exit_status != 9
 			echoerr 'for source file "' . g:ctype_chan_cdb[chid].filename .
-						\ '" ' . s:clangcdb_name . ' exited with code = ' . a:exit_status
+						\ '" ' . g:ctype_prefixname . s:clangcdb_name . ' exited with code = ' . a:exit_status
 		endif
 	endif
 
@@ -101,7 +101,7 @@ func s:ClangCDB_Exit(job, exit_status)
 	endif
 endfunc
 
-func clangcdb#GetCDB_Entries(bufnr, filename, method, callback)
+func ctypecdb#GetCDB_Entries(bufnr, filename, method, callback)
 	let cmd = fnameescape(s:clangcdb_path) . ' ' .
 				\ fnameescape(a:filename) .
 				\ ' ' . a:method
