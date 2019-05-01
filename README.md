@@ -371,7 +371,7 @@ file of project separately) with arguments obtained above.
 
 Also you can generate `compile_commands.json` automatically
 using `-MJ` command line argument for `clang`. But be careful,
-it creates new `compile_commands.json` file, so previous
+it creates new `compile_commands.json` file each time it run, so previous
 entries will be removed. And don't forget add `[` and `]`
 brackets at the beginning and the end of `compile_commands.json`
 file manually because `clang` creates it without, which is not
