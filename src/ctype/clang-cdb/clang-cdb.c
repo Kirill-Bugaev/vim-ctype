@@ -13,6 +13,7 @@
 static void parsecmdargs(int, char *[]);
 static CXCompilationDatabase getcdb();
 static void savcc(const char *, const char *, char *);
+static void freefnwd(CXString, CXString);
 static void freeccs(CXString, CXString, CXCompileCommands);
 static void getccs(CXCompilationDatabase cdb);
 
@@ -20,7 +21,8 @@ static char *srcf;	/* source file */
 static long m = 3;	/* method:	
 							1 - print first valid compile command
 				   			2 - print all valid compile commands from all cdbs
-							3 - print first found compile command (no check) */
+							3 - print first found compile command (no check)
+							4 - print all found compile commands (no check) from all cdbs */
 static char *cdb_sp;	/* compilation db search path (initial is source file
 						   path, last found cdb dir further) */
 static char *clang;
@@ -55,7 +57,7 @@ parsecmdargs(int argc, char *argv[])
 		return;
 	errno = 0;
 	m = strtol(argv[2], &endptr, 10);
-	if (errno != 0 || *endptr != '\0' || m < 1 || m > 3)
+	if (errno != 0 || *endptr != '\0' || m < 1 || m > 4)
 		exit(METHERR);
 
 	/* path to clang */
@@ -114,10 +116,16 @@ savcc(const char *fn, const char *wd, char *args)
 }
 
 void
-freeccs(CXString cx_fn, CXString cx_wd, CXCompileCommands ccs)
+freefnwd(CXString cx_fn, CXString cx_wd)
 {
 	clang_disposeString(cx_fn);
 	clang_disposeString(cx_wd);
+}
+
+void
+freeccs(CXString cx_fn, CXString cx_wd, CXCompileCommands ccs)
+{
+	freefnwd(cx_fn, cx_wd);
 	clang_CompileCommands_dispose(ccs);
 }
 
@@ -181,11 +189,15 @@ void getccs(CXCompilationDatabase cdb)
 		if (*args != '\0')
 			*(args + strlen(args) - 1) = '\0';	/* remove trailing whitespace */
 
-		if (m == 3) {
+		if (m == 3 || m == 4) {
 			/* validation not required */
 			savcc(fn, wd, args);
-			freeccs(cx_fn, cx_wd, ccs);
-			return;
+			if (m == 3) {
+				freeccs(cx_fn, cx_wd, ccs);
+				return;
+			}
+			freefnwd(cx_fn, cx_wd);
+			continue;
 		}
 
 		/* check obtained args */
@@ -244,8 +256,7 @@ void getccs(CXCompilationDatabase cdb)
 			free(args);
 		}
 
-		clang_disposeString(cx_fn);
-		clang_disposeString(cx_wd);
+		freefnwd(cx_fn, cx_wd);
 	}
 
 	clang_CompileCommands_dispose(ccs);
