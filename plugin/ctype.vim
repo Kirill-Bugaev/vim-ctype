@@ -16,7 +16,6 @@ endif
 
 if !exists('g:ctype_server_clangpppath')
 	let g:ctype_server_clangpppath = '/usr/bin/clang++'
-
 endif
 
 if !exists('g:ctype_server_showerrormsg')
@@ -210,7 +209,7 @@ if g:ctype_cdb_method > 0
 		au!
 		au VimEnter * call s:LoadCDB_OnVimEnter()
 		au BufAdd *.c,*.cpp call s:LoadCDB_OnBufAdd()
-		au BufDelete *.c,*.cpp call s:DeleteCDB_OnBufAdd()
+		au BufDelete *.c,*.cpp call s:DeleteCDB_OnBufDelete()
 	augroup END
 endif
 
@@ -222,57 +221,17 @@ func s:LoadCDB_OnVimEnter()
 		let buf_ft = fnamemodify(buf_i.name, ':e')
 		if buf_ft ==# 'c' || buf_ft ==# 'cpp'
 			call ctypecdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr),
-						\ g:ctype_cdb_method, function('s:CDB_Response'))
+						\ g:ctype_cdb_method)
 		endif
 	endfor
 endfunc
 
 func s:LoadCDB_OnBufAdd()
 	call ctypecdb#GetCDB_Entries(expand('<abuf>'), expand('<afile>'),
-				\ g:ctype_cdb_method, function('s:CDB_Response'))
+				\ g:ctype_cdb_method)
 endfunc
 
-func s:DeleteCDB_OnBufAdd()
+func s:DeleteCDB_OnBufDelete()
 	call remove(g:ctype_cdb, expand('<abuf>'))
 endfunc
 
-func s:CDB_Response(chan, msg)
-	let chn = ch_info(a:chan).id
-	let cdb = g:ctype_chan_cdb[chn].cur_cdb
-
-	if g:ctype_chan_cdb[chn].receive_count == 1
-		" Receive cdb path
-		call add(g:ctype_chan_cdb[chn].cdbs, {'path': a:msg})
-		let g:ctype_chan_cdb[chn].receive_count += 1
-	else
-		if g:ctype_chan_cdb[chn].receive_count == 2
-			" Receive number of commands
-			let g:ctype_chan_cdb[chn].cdbs[cdb].comnum = a:msg
-			let g:ctype_chan_cdb[chn].cdbs[cdb].commands = []
-			let g:ctype_chan_cdb[chn].cdbs[cdb].cur_com = 0
-			let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count = 1
-			let g:ctype_chan_cdb[chn].receive_count += 1
-		else
-			let cur_com = g:ctype_chan_cdb[chn].cdbs[cdb].cur_com
-			" Receive commands
-			if g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 1
-				call add(g:ctype_chan_cdb[chn].cdbs[cdb].commands, {'filename': a:msg})
-			elseif g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 2
-				let g:ctype_chan_cdb[chn].cdbs[cdb].commands[cur_com].workingdir = a:msg
-			elseif g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 3
-				let g:ctype_chan_cdb[chn].cdbs[cdb].commands[cur_com].cmdargs = a:msg
-				let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count = 0
-				let g:ctype_chan_cdb[chn].cdbs[cdb].cur_com += 1
-			endif
-			let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count += 1
-			let g:ctype_chan_cdb[chn].receive_count += 1
-		endif
-
-		if g:ctype_chan_cdb[chn].receive_count >
-					\ g:ctype_chan_cdb[chn].cdbs[cdb].comnum * 3 + 2
-			" Will receive next cdb
-			let g:ctype_chan_cdb[chn].receive_count = 1
-			let g:ctype_chan_cdb[chn].cur_cdb += 1
-		endif
-	endif
-endfunc

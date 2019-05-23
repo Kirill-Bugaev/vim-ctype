@@ -107,11 +107,17 @@ let g:ctype_server_showerrormsg = 0
 ### g:ctype_cdb_method
 Plugin can find valid compile commands for source 
 file in compilation database if it exists. You can
-configure default behavior. Value `0` means not use
-compilation database at all. `1` means use first
-valid compile command arguments. `2` means
-print all valid compile commands and provide
-user to choose appropriate.
+configure default behavior.
+
+`0` means not use compilation database at all.
+
+`1` means use first valid compile command arguments.
+
+`2` means print all valid compile commands and provide
+user to choose appropriate (deprecated now).
+
+`3` means use first found (not checked) compile command
+arguments.
 
 Warning! Now methods `1` and `2` work identically
 because I don't know how to display compile commands
@@ -121,7 +127,7 @@ commented code (`autoload/clangcdb.vim`
 `s:ChooseCompileCommand()` function) which displays
 compile commands variants as Vim command line echo.
 ```vim
-let g:ctype_cdb_method = 2
+let g:ctype_cdb_method = 1
 ```
 (numeric, default `1`)
 

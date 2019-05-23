@@ -9,9 +9,9 @@ func s:LoadEmptyCompileCommand(bufnum, filename)
 	let g:ctype_cdb[a:bufnum].cmdargs = ''
 endfunc
 
-func s:ChooseCompileCommand(job)
+func s:ChooseCompileCommand(chid)
 	let cmds = []
-	let chn = ch_info(job_getchannel(a:job)).id
+	let chn = a:chid
 	let bufnum = g:ctype_chan_cdb[chn].bufnr
 	let filename = g:ctype_chan_cdb[chn].filename
 	let cmdn = -1
@@ -57,20 +57,81 @@ func s:ChooseCompileCommand(job)
 	if cmdn != -1
 		let g:ctype_cdb[bufnum] = cmds[cmdn - 1]
 	elseif len(cmds) != 0
-		" Load first valid command
+		" Load first command
 		let g:ctype_cdb[bufnum] = cmds[0]
 	else 
 		call s:LoadEmptyCompileCommand(bufnum, filename)
 	endif
 endfunc
 
-func s:ClangCDB_Exit(job, exit_status)
-	let chid = ch_info(job_getchannel(a:job)).id
-	if a:exit_status == 0
-		call s:ChooseCompileCommand(a:job)
-		call remove(g:ctype_chan_cdb, chid)
+func s:CDB_Response(chan, msg)
+	let chn = ch_info(a:chan).id
+	let cdb = g:ctype_chan_cdb[chn].cur_cdb
+
+	if g:ctype_chan_cdb[chn].receive_count == 1
+		" Receive cdb path
+		call add(g:ctype_chan_cdb[chn].cdbs, {'path': a:msg})
+		let g:ctype_chan_cdb[chn].receive_count += 1
+	else
+		if g:ctype_chan_cdb[chn].receive_count == 2
+			" Receive number of commands
+			let g:ctype_chan_cdb[chn].cdbs[cdb].comnum = a:msg
+			let g:ctype_chan_cdb[chn].cdbs[cdb].commands = []
+			let g:ctype_chan_cdb[chn].cdbs[cdb].cur_com = 0
+			let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count = 1
+			let g:ctype_chan_cdb[chn].receive_count += 1
+		else
+			let cur_com = g:ctype_chan_cdb[chn].cdbs[cdb].cur_com
+			" Receive commands
+			if g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 1
+				call add(g:ctype_chan_cdb[chn].cdbs[cdb].commands, {'filename': a:msg})
+			elseif g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 2
+				let g:ctype_chan_cdb[chn].cdbs[cdb].commands[cur_com].workingdir = a:msg
+			elseif g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count == 3
+				let g:ctype_chan_cdb[chn].cdbs[cdb].commands[cur_com].cmdargs = a:msg
+				let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count = 0
+				let g:ctype_chan_cdb[chn].cdbs[cdb].cur_com += 1
+			endif
+			let g:ctype_chan_cdb[chn].cdbs[cdb].com_entr_count += 1
+			let g:ctype_chan_cdb[chn].receive_count += 1
+		endif
+
+		if g:ctype_chan_cdb[chn].receive_count >
+					\ g:ctype_chan_cdb[chn].cdbs[cdb].comnum * 3 + 2
+			" Will receive next cdb
+			let g:ctype_chan_cdb[chn].receive_count = 1
+			let g:ctype_chan_cdb[chn].cur_cdb += 1
+		endif
+	endif
+endfunc
+
+" This callback executes last
+func s:ClangCDB_Close(chan)
+	" Wait until exit callback finish
+	let timeout = 1000
+	let sleeptime = 10
+	let elapsedtime = 0
+	while job_status(ch_getjob(a:chan)) ==# 'run' && elapsedtime <= timeout
+		exe 'sleep ' . sleeptime . ' m'
+		let elapsedtime += sleeptime
+	endwhile
+
+	let chid = ch_info(a:chan).id
+
+	if !exists('g:ctype_chan_cdb[' . chid . ']')
 		return
 	endif
+
+	call s:ChooseCompileCommand(chid)
+	call remove(g:ctype_chan_cdb, chid)
+endfunc
+
+func s:ClangCDB_Exit(job, exit_status)
+	if a:exit_status == 0
+		return
+	endif
+
+	let chid = ch_info(job_getchannel(a:job)).id
 
 	call s:LoadEmptyCompileCommand(g:ctype_chan_cdb[chid].bufnr,
 				\ g:ctype_chan_cdb[chid].filename)
@@ -96,17 +157,16 @@ func s:ClangCDB_Exit(job, exit_status)
 		endif
 	endif
 
-	if exists('g:ctype_chan_cdb[chid]')
-		call remove(g:ctype_chan_cdb, chid)
-	endif
+	call remove(g:ctype_chan_cdb, chid)
 endfunc
 
-func ctypecdb#GetCDB_Entries(bufnr, filename, method, callback)
+func ctypecdb#GetCDB_Entries(bufnr, filename, method)
 	let cmd = fnameescape(s:clangcdb_path) . ' ' .
 				\ fnameescape(a:filename) .
 				\ ' ' . a:method
 	let job = job_start(cmd,
-				\ {'out_cb': a:callback,
+				\ {'out_cb': function('s:CDB_Response'),
+				\ 'close_cb': function('s:ClangCDB_Close'),
 				\ 'exit_cb': function('s:ClangCDB_Exit')})
 	let g:ctype_chan_cdb[ch_info(job_getchannel(job)).id] =
 				\ {'bufnr': a:bufnr, 'filename': a:filename, 'receive_count': 1,

@@ -12,11 +12,15 @@
 
 static void parsecmdargs(int, char *[]);
 static CXCompilationDatabase getcdb();
+static void savcc(const char *, const char *, char *);
+static void freeccs(CXString, CXString, CXCompileCommands);
 static void getccs(CXCompilationDatabase cdb);
 
 static char *srcf;	/* source file */
-static long m;	/* method:	1 - print first valid compile command
-				   			2 - print all valid compile commands from all cdbs*/
+static long m = 3;	/* method:	
+							1 - print first valid compile command
+				   			2 - print all valid compile commands from all cdbs
+							3 - print first found compile command (no check) */
 static char *cdb_sp;	/* compilation db search path (initial is source file
 						   path, last found cdb dir further) */
 static char *clang;
@@ -42,14 +46,16 @@ parsecmdargs(int argc, char *argv[])
 {
 	char *endptr;
 	
-	if (argc < 3)
+	if (argc < 2)
 		exit(ARGNERR);
 
 	srcf = argv[1];
 
+	if (argc == 2)
+		return;
 	errno = 0;
 	m = strtol(argv[2], &endptr, 10);
-	if (errno != 0 || *endptr != '\0' || m < 1 || m > 2)
+	if (errno != 0 || *endptr != '\0' || m < 1 || m > 3)
 		exit(METHERR);
 
 	/* path to clang */
@@ -92,6 +98,27 @@ getcdb()
 
 	free(d);
 	return (CXCompilationDatabase) NULL;
+}
+
+void
+savcc(const char *fn, const char *wd, char *args)
+{
+	if (!(fns = realloc(fns, s + 1)) ||
+			!(wds = realloc(wds, s + 1)) ||
+			!(ccsargs = realloc(ccsargs, s + 1)) ||
+			!(*(fns + s) = strdup(fn)) ||
+			!(*(wds + s) = strdup(wd)))
+		exit(MEMERR);
+	*(ccsargs + s) = args;
+	++s;
+}
+
+void
+freeccs(CXString cx_fn, CXString cx_wd, CXCompileCommands ccs)
+{
+	clang_disposeString(cx_fn);
+	clang_disposeString(cx_wd);
+	clang_CompileCommands_dispose(ccs);
 }
 
 void getccs(CXCompilationDatabase cdb)
@@ -154,6 +181,13 @@ void getccs(CXCompilationDatabase cdb)
 		if (*args != '\0')
 			*(args + strlen(args) - 1) = '\0';	/* remove trailing whitespace */
 
+		if (m == 3) {
+			/* validation not required */
+			savcc(fn, wd, args);
+			freeccs(cx_fn, cx_wd, ccs);
+			return;
+		}
+
 		/* check obtained args */
 		pid_t p = fork();
 		if (p == 0) {
@@ -198,20 +232,11 @@ void getccs(CXCompilationDatabase cdb)
 			exit(FORKERR);
 		if (WIFEXITED(st) && WEXITSTATUS(st) == 0) {
 			/* save valid data */
-			if (!(fns = realloc(fns, s + 1)) ||
-					!(wds = realloc(wds, s + 1)) ||
-					!(ccsargs = realloc(ccsargs, s + 1)) ||
-					!(*(fns + s) = strdup(fn)) ||
-					!(*(wds + s) = strdup(wd)))
-				exit(MEMERR);
-			*(ccsargs + s) = args;
-			++s;
+			savcc(fn, wd, args);
 			
 			if (m == 1) {
 				/* only one valid compile command required */
-				clang_disposeString(cx_fn);
-				clang_disposeString(cx_wd);
-				clang_CompileCommands_dispose(ccs);
+				freeccs(cx_fn, cx_wd, ccs);
 				return;
 			}
 		} else {
