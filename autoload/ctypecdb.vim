@@ -105,7 +105,7 @@ func s:CDB_Response(chan, msg)
 	endif
 endfunc
 
-" This callback executes last
+" This callback executes last (but can be before exit callback)
 func s:ClangCDB_Close(chan)
 	" Wait until exit callback finish
 	let timeout = 1000
@@ -118,23 +118,23 @@ func s:ClangCDB_Close(chan)
 
 	let chid = ch_info(a:chan).id
 
-	if !exists('g:ctype_chan_cdb[' . chid . ']')
-		return
+	if g:ctype_chan_cdb[chid].complete 
+		call s:ChooseCompileCommand(chid)
+	else
+		call s:LoadEmptyCompileCommand(g:ctype_chan_cdb[chid].bufnr,
+					\ g:ctype_chan_cdb[chid].filename)
 	endif
 
-	call s:ChooseCompileCommand(chid)
 	call remove(g:ctype_chan_cdb, chid)
 endfunc
 
 func s:ClangCDB_Exit(job, exit_status)
-	if a:exit_status == 0
-		return
-	endif
-
 	let chid = ch_info(job_getchannel(a:job)).id
 
-	call s:LoadEmptyCompileCommand(g:ctype_chan_cdb[chid].bufnr,
-				\ g:ctype_chan_cdb[chid].filename)
+	if a:exit_status == 0
+		let g:ctype_chan_cdb[chid].complete = 1
+		return
+	endif
 	
 	if g:ctype_cdb_showerrormsg
 		if a:exit_status == 1
@@ -156,8 +156,6 @@ func s:ClangCDB_Exit(job, exit_status)
 						\ '" ' . g:ctype_prefixname . s:clangcdb_name . ' exited with code = ' . a:exit_status
 		endif
 	endif
-
-	call remove(g:ctype_chan_cdb, chid)
 endfunc
 
 func ctypecdb#GetCDB_Entries(bufnr, filename, method)
@@ -170,5 +168,5 @@ func ctypecdb#GetCDB_Entries(bufnr, filename, method)
 				\ 'exit_cb': function('s:ClangCDB_Exit')})
 	let g:ctype_chan_cdb[ch_info(job_getchannel(job)).id] =
 				\ {'bufnr': a:bufnr, 'filename': a:filename, 'receive_count': 1,
-				\ 'cur_cdb': 0, 'cdbs': []}
+				\ 'cur_cdb': 0, 'cdbs': [], 'complete': 0}
 endfunc
