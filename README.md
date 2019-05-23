@@ -118,14 +118,6 @@ user to choose appropriate (deprecated now).
 
 `3` means use first found (not checked) compile command
 arguments.
-
-Warning! Now methods `1` and `2` work identically
-because I don't know how to display compile commands
-variants and give user opportunity to choose
-appropriate in Vim asynchronously. So I have
-commented code (`autoload/clangcdb.vim`
-`s:ChooseCompileCommand()` function) which displays
-compile commands variants as Vim command line echo.
 ```vim
 let g:ctype_cdb_method = 1
 ```

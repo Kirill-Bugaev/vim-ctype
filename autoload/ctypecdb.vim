@@ -10,58 +10,92 @@ func s:LoadEmptyCompileCommand(bufnum, filename)
 endfunc
 
 func s:ChooseCompileCommand(chid)
-	let cmds = []
 	let chn = a:chid
 	let bufnum = g:ctype_chan_cdb[chn].bufnr
 	let filename = g:ctype_chan_cdb[chn].filename
-	let cmdn = -1
 
+	if g:ctype_cdb_method == 1 || g:ctype_cdb_method == 3
+		for cdb in g:ctype_chan_cdb[chn].cdbs
+			if len(cdb.commands) != 0
+				let cmd = cdb.commands[0]
+				break
+			endif
+		endfor
+		if exists('l:cmd')
+			let g:ctype_cdb[bufnum] = deepcopy(cmd)
+		else 
+			call s:LoadEmptyCompileCommand(bufnum, filename)
+		endif
+		return
+	endif
+
+"	" Clear current command line messages
+"	echon "\r\r"
+"	echon ''
+"	" Redraw the screen
+"	redraw
+
+	" Vim doesn't show echo[m] messages on some autocmd events
+	" so put it all in input command
+	let echs = 'Results of search of'
+	if g:ctype_cdb_method == 2
+		let echs .= ' valid'
+	endif
+	let echs .= ' compile commands for file "' .
+				\ filename . '"' . "\n"
+	
+	let cmds = []
+	let cmdn = -1
 	for cdb in g:ctype_chan_cdb[chn].cdbs
+		let echs .= '=== Compilation Database in ' . cdb.path .' directory contains ' .
+					\ cdb.comnum
+		if g:ctype_cdb_method == 2
+			let echs .= ' valid'
+		endif
+		let echs .= ' compile commands:' . "\n"
 		for cmd in cdb.commands
 			call add(cmds, cmd)
+			let echs .=  '--- Command #' . len(cmds) . "\n"
+			let echs .= 'Filename: ' . cmd.filename . "\n"
+			let echs .= 'Working directory: ' . cmd.workingdir . "\n"
+			let echs .= 'Command line arguments: ' . cmd.cmdargs . "\n"
+			let echs .=  '---' . "\n"
 		endfor
+		let echs .= '===' . "\n"
 	endfor
 
-"	echom 'Results of search valid compile commands for file "' .
-"				\ filename . '"'
-"	
-"	for cdb in g:ctype_chan_cdb[chn].cdbs
-"		echom '=== Compilation Database in ' . cdb.path .' directory contains ' .
-"					\ cdb.comnum . ' valid compile commands:'
-"		for cmd in cdb.commands
-"			call add(cmds, cmd)
-"			echom '--- Command #' . len(cmds)
-"			echom 'Filename: ' . cmd.filename
-"			echom 'Working directory: ' . cmd.workingdir
-"			echom 'Command line arguments: ' . cmd.cmdargs
-"			echom '---'
-"		endfor
-"		echom '==='
-"	endfor
-"
-"	let chosen_cmd = input('Choose compile command (number) or press ENTER to continue: ')
-"	
-"	if chosen_cmd !=# ''
-"		try
-"			let cmdn = str2nr(chosen_cmd)
-"		catch
-"			echoerr 'Incorrect command number: ' . chosen_cmd
-"			let cmdn = -1
-"		endtry
-"		if cmdn < 1 || cmdn > len(cmds)
-"			echoerr 'Incorrect command number: ' . chosen_cmd
-"			let cmdn = -1
-"		endif
-"	endif
+	let echs .= 'Choose compile command (number) or press ENTER to continue: '
+	let chosen_cmd = input(echs)
+	
+	if chosen_cmd !=# ''
+		try
+			let cmdn = str2nr(chosen_cmd)
+		catch
+			echoerr 'Incorrect command number: ' . chosen_cmd
+			let cmdn = -1
+		endtry
+		if cmdn < 1 || cmdn > len(cmds)
+			echoerr 'Incorrect command number: ' . chosen_cmd
+			let cmdn = -1
+		endif
+	endif
 
 	if cmdn != -1
-		let g:ctype_cdb[bufnum] = cmds[cmdn - 1]
+		let g:ctype_cdb[bufnum] = deepcopy(cmds[cmdn - 1])
 	elseif len(cmds) != 0
 		" Load first command
-		let g:ctype_cdb[bufnum] = cmds[0]
+		let g:ctype_cdb[bufnum] = deepcopy(cmds[0])
 	else 
 		call s:LoadEmptyCompileCommand(bufnum, filename)
 	endif
+endfunc
+
+func s:ChooseCC_OnCurMoved(chid)
+	call s:ChooseCompileCommand(a:chid)
+	exe 'augroup ctype-cdb-choosecc-' . a:chid
+		au!
+	augroup END
+	call remove(g:ctype_chan_cdb, a:chid)
 endfunc
 
 func s:CDB_Response(chan, msg)
@@ -119,13 +153,18 @@ func s:ClangCDB_Close(chan)
 	let chid = ch_info(a:chan).id
 
 	if g:ctype_chan_cdb[chid].complete 
-		call s:ChooseCompileCommand(chid)
+		" Make choose of compile command synchronous
+		exe 'augroup ctype-cdb-choosecc-' . chid
+			au!
+			exe 'au User *.c,*.cpp ' .
+						\ 'call s:ChooseCC_OnCurMoved(' . chid . ')'
+		augroup END
+		exe 'do ctype-cdb-choosecc-' . chid . ' User'
 	else
 		call s:LoadEmptyCompileCommand(g:ctype_chan_cdb[chid].bufnr,
 					\ g:ctype_chan_cdb[chid].filename)
+		call remove(g:ctype_chan_cdb, chid)
 	endif
-
-	call remove(g:ctype_chan_cdb, chid)
 endfunc
 
 func s:ClangCDB_Exit(job, exit_status)
