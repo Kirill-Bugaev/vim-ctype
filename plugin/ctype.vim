@@ -232,18 +232,36 @@ func s:LoadCDB_OnVimEnter()
 	for buf_i in getbufinfo()
 		let buf_ft = fnamemodify(buf_i.name, ':e')
 		if buf_ft ==# 'c' || buf_ft ==# 'cpp'
-			call ctypecdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr),
-						\ g:ctype_cdb_method)
+			call ctypecdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr))
 		endif
 	endfor
 endfunc
 
 func s:LoadCDB_OnBufAdd()
-	call ctypecdb#GetCDB_Entries(expand('<abuf>'), expand('<afile>'),
-				\ g:ctype_cdb_method)
+	call ctypecdb#GetCDB_Entries(expand('<abuf>'), expand('<afile>'))
 endfunc
 
 func s:DeleteCDB_OnBufDelete()
 	call remove(g:ctype_cdb, expand('<abuf>'))
 endfunc
 
+func s:UpdateCDB(bufnum)
+	let ftype = getbufvar(a:bufnum, "&filetype")
+	if ftype != 'c' && ftype != 'cpp'
+		return
+	endif
+	
+	call remove(g:ctype_cdb, a:bufnum)
+	call ctypecdb#GetCDB_Entries(a:bufnum, bufname(a:bufnum))
+endfunc
+
+func s:UpdateCDBAll()
+	for buf_i in getbufinfo()
+		call s:UpdateCDB(buf_i.bufnr)
+	endfor
+endfunc
+
+command! -bar -nargs=0 CTypeUpdateCDBCurrent
+			\ call s:UpdateCDB(bufnr('%'))
+command! -bar -nargs=0 CTypeUpdateCDBAll
+			\ call s:UpdateCDBAll()

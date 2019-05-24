@@ -211,6 +211,14 @@ let g:ctype_updatestl = 1
 ```
 (boolean, default `undefined`)
 
+## Commands
+
+### `CTypeUpdateCDBCurrent`
+Update Compilation DB arguments for current buffer.
+
+### `CTypeUpdateCDBAll`
+Update Compilation DB arguments for all opened buffers.
+
 ## How to make Compilation Database
 Some C and C++ projects are compiled using `Make` and `CMake`
 facility. Often plugin can't work with source code files of
