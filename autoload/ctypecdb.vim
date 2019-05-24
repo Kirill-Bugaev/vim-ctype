@@ -65,7 +65,11 @@ func s:ChooseCompileCommand(chid)
 	endfor
 
 	let echs .= 'Choose compile command (number) or press ENTER to continue: '
-	let chosen_cmd = input(echs)
+	if len(cmds) > 1
+		let chosen_cmd = input(echs)
+	else
+		let chosen_cmd = ''
+	endif
 	
 	if chosen_cmd !=# ''
 		try
