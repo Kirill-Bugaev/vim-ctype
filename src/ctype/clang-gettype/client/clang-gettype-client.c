@@ -18,6 +18,8 @@ static char *wd;
 enum errors {
 	ARGNERR = 1,
 	CRDERR,
+	METHERR,
+	REPARSERR,
 	SOCKERR,
 	CONERR,
 	SNDERR,
@@ -48,11 +50,26 @@ parsecmdargs(int argc, char *argv[])
 	if (errno != 0 || *endptr != '\0' || col <= 0)
 		exit(CRDERR);
 
-	/* clang cmd args */
 	if (argc == 6)
 		return;
-	clargs = argv[6];
+	errno = 0;
+	method = strtol(argv[6], &endptr, 10);
+	if (errno != 0 || *endptr != '\0' || method < 0 || method > 1)
+		exit(METHERR);
+
+	if (argc == 7)
+		return;
+	errno = 0;
+	reparse = strtol(argv[7], &endptr, 10);
+	if (errno != 0 || *endptr != '\0' || method < 0 || method > 1)
+		exit(REPARSERR);
+
+	/* clang cmd args */
+	if (argc == 8)
+		return;
+	clargs = argv[8];
 	clargs_s = strlen(clargs) + 1;
+
 }
 
 void
@@ -79,6 +96,8 @@ sendreq(void)
 			write(sfd, wd, wd_s) != wd_s ||
 			write(sfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
 			write(sfd, &col, sizeof(col)) != sizeof(col) ||
+			write(sfd, &method, sizeof(method)) != sizeof(method) ||
+			write(sfd, &reparse, sizeof(reparse)) != sizeof(reparse) ||
 			write(sfd, &clargs_s, sizeof(clargs_s)) != sizeof(clargs_s) ||
 			write(sfd, clargs, clargs_s) != clargs_s ) {
 		close(sfd);

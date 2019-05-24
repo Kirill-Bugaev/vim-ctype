@@ -2,6 +2,10 @@ if !exists('g:ctype_getmethod')
 	let g:ctype_getmethod = 1
 endif
 
+if !exists('g:ctype_reparsetu')
+	let g:ctype_reparsetu = 1
+endif
+
 if !exists('g:ctype_server_backlog')
 	let g:ctype_server_backlog = 10
 endif

@@ -1,0 +1,21 @@
+!_TAG_FILE_SORTED	2	/0=unsorted, 1=sorted, 2=foldcase/
+ARGNERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	ARGNERR = 1,$/;"	e	language:C++	enum:errors	file:
+CONERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	CONERR,$/;"	e	language:C++	enum:errors	file:
+contoserv	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^contoserv(void)$/;"	f	language:C++	typeref:typename:void
+contoserv	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static void contoserv(void);$/;"	p	language:C++	typeref:typename:void	file:
+CRDERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	CRDERR,$/;"	e	language:C++	enum:errors	file:
+errors	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^enum errors {$/;"	g	language:C++	file:
+main	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^main(int argc, char *argv[])$/;"	f	language:C++	typeref:typename:int
+METHERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	METHERR,$/;"	e	language:C++	enum:errors	file:
+parsecmdargs	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^parsecmdargs(int argc, char *argv[])$/;"	f	language:C++	typeref:typename:void
+parsecmdargs	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static void parsecmdargs(int, char *[]);$/;"	p	language:C++	typeref:typename:void	file:
+RCVERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	RCVERR,$/;"	e	language:C++	enum:errors	file:
+recvtype	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^recvtype(void)$/;"	f	language:C++	typeref:typename:void
+recvtype	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static void recvtype(void);$/;"	p	language:C++	typeref:typename:void	file:
+REPARSERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	REPARSERR,$/;"	e	language:C++	enum:errors	file:
+sendreq	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^sendreq(void)$/;"	f	language:C++	typeref:typename:void
+sendreq	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static void sendreq(void);$/;"	p	language:C++	typeref:typename:void	file:
+SNDERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	SNDERR,$/;"	e	language:C++	enum:errors	file:
+SOCKERR	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^	SOCKERR,$/;"	e	language:C++	enum:errors	file:
+srcf	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static char *srcf;$/;"	v	language:C++	typeref:typename:char *	file:
+wd	/home/user1/.vim/bundle/vim-ctype/src/ctype/clang-gettype/client/clang-gettype-client.c	/^static char *wd;$/;"	v	language:C++	typeref:typename:char *	file:

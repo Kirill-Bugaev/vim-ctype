@@ -44,6 +44,23 @@ let g:ctype_getmethod = 0
 ```
 (numeric, default `1`)
 
+### g:ctype_reparsetu
+Defines will Translation Unit be reparsed or created again
+when source file is changed. Clang docs declare that reparse
+is more more efficient. Make sense only with
+`let g:ctype_getmethod = 1`.
+
+`0` means new Translation Unit will be created.
+
+`1` means Translation Unit will be reparsed with the same
+arguments which was used when Translation Unit had been
+created.
+
+```vim
+let g:ctype_reparsetu = 0
+```
+(boolean, default `1`)
+
 ### g:ctype_server_backlog
 Defines the maximum length to which the queue of pending
 connections for server socket may grow. Plugin
@@ -123,17 +140,33 @@ configure default behavior.
 
 `0` means not use compilation database at all.
 
-`1` means use first valid compile command arguments.
+`1` means find first valid compile command arguments
 
-`2` means print all valid compile commands and provide
-user to choose appropriate (deprecated now).
+`2` means find all valid compile commands
 
-`3` means use first found (not checked) compile command
-arguments.
+`3` means find first compile command arguments without
+checking for validity
+
+`4` means find all available compile commands without
+checking for validity
+
 ```vim
-let g:ctype_cdb_method = 1
+let g:ctype_cdb_method = 2
 ```
-(numeric, default `1`)
+(numeric, default `4`)
+
+### g:ctype_cdb_autoload
+
+`0` means show all founded compile commands arguments 
+and provide user to choose appropriate
+
+`1` means load first found compile command arguments
+automatically
+
+```vim
+let g:ctype_cdb_autoload = 0
+```
+(boolean, default `1`)
 
 ### g:ctype_cdb_showerrormsg
 Defines will error messages from compilation database

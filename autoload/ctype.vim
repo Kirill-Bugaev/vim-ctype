@@ -19,12 +19,16 @@ func s:ClientExit(job, exit_status)
 		elseif a:exit_status == 2
 			echoerr g:ctype_prefixname . s:client_name . ': invalid cursor position'
 		elseif a:exit_status == 3
-			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid get type method'
 		elseif a:exit_status == 4
-			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid reparse option value'
 		elseif a:exit_status == 5
-			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
 		elseif a:exit_status == 6
+			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
+		elseif a:exit_status == 7
+			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
+		elseif a:exit_status == 8
 			echoerr g:ctype_prefixname . s:client_name . ": can't receive data from server"
 		endif
 		echoerr g:ctype_prefixname . s:client_name . ' exited with code = ' . a:exit_status
@@ -57,6 +61,10 @@ func ctype#GetType(callback)
 	endif
 
 	let cmd .=  ' ' . lnum . ' ' . colnum
+
+	let cmd .= ' ' . g:ctype_getmethod
+
+	let cmd .= ' ' . g:ctype_reparsetu
 
 	let cmd .= ' "'
 

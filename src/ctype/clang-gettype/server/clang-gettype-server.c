@@ -182,7 +182,9 @@ recvquery(void)
 			read(cfd, &wd_s, sizeof(wd_s)) != sizeof(wd_s) ||
 			read(cfd, wd, wd_s) != wd_s ||
 			read(cfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
-			read(cfd, &col, sizeof(col)) != sizeof(col) )
+			read(cfd, &col, sizeof(col)) != sizeof(col) ||
+			read(cfd, &method, sizeof(method)) != sizeof(method) ||
+			read(cfd, &reparse, sizeof(reparse)) != sizeof(reparse) )
 		return -1;
 
 	if (clargs) {
@@ -204,9 +206,6 @@ recvquery(void)
 			return -1;
 		*clargs = '\0';
 	}
-
-	if (read(cfd, &method, sizeof(method)) != sizeof(method))
-		return -1;
 
 	return 0;
 }
@@ -487,6 +486,11 @@ cacheop(long ci, TUi **np, TUi *prev)
 		prev = NULL;
 		++cf;
 	} else {
+		if (method != 0 && reparse) {
+			clang_reparseTranslationUnit((*np)->tu, 0, NULL,
+					clang_defaultReparseOptions((*np)->tu));
+			return 0;
+		}
 		clang_disposeTranslationUnit((*np)->tu);
 		clang_disposeIndex((*np)->index);
 	}
