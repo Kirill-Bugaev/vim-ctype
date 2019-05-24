@@ -28,9 +28,9 @@ static void starserv(void);
 static int recvquery(void);
 static int sendtype(void);
 
-static int cfd;
-static char srcf[PATH_MAX];
-static char wd[PATH_MAX];
+static int cfd;	/* socket */
+static char srcf[PATH_MAX];	/* source file */
+static char wd[PATH_MAX];	/* working dir */
 
 static void sighandler(int);
 static void catchsigs(void);
@@ -52,13 +52,15 @@ static char *makeast(void);
 static void freenp(long, TUi *, TUi *);
 static long findold(TUi **, TUi **);
 static void removci(long, TUi *, TUi *);
+static void freeargs(int, char *[]);
+static int parseclargs(char **[]);
 static int cacheop(long, TUi **, TUi *);
 static int gettype(CXTranslationUnit);
 static int clangreq(void);
 
-static TUi **c;
+static TUi **c;	/* Translation Unit item */
 static unsigned cf = 0;	/* cache fullness */
-static char *astf = NULL;
+static char *astf = NULL;	/* AST file */
 
 enum errors {
 	FORKERR = 1,
@@ -202,6 +204,9 @@ recvquery(void)
 			return -1;
 		*clargs = '\0';
 	}
+
+	if (read(cfd, &method, sizeof(method)) != sizeof(method))
+		return -1;
 
 	return 0;
 }
@@ -382,12 +387,85 @@ removci(long ci, TUi *np, TUi *prev)
 	--cf;
 }
 
+void
+freeargs(int argc, char *argv[])
+{
+	int i;
+
+	for (i = 0; i < argc; ++i)
+		free(*(argv + i));
+	if (argv)
+		free(argv);
+}
+
+int
+parseclargs(char **argv[])
+{
+	char *p, *arg, *ap;
+	int argc = 0, quote = 0, bslash = 0;
+	void *reargv;
+
+	*argv = NULL;
+
+	if (!(ap = arg = malloc(strlen(clargs) + 1)))
+		return -1;
+
+	for (p = clargs; *p != '\0'; ++p) {
+		if (*p == '\'' && !bslash && quote != 2)
+			quote = (quote) ? 0: 1;
+		else if (*p == '\"' && !bslash && quote != 1)
+			quote = (quote == 2) ? 0: 2;
+		
+		if (*p == ' ' && !quote && !bslash) {
+			*ap = '\0';
+			++argc;
+			if (!(reargv = realloc(*argv, sizeof(**argv) * argc))) {
+				freeargs(argc - 1, *argv);
+				free(arg);
+				return -1;
+			} else
+				*argv = reargv;
+			if (!(*(*argv + argc - 1) = strdup(arg))) {
+				freeargs(argc, *argv);
+				free(arg);
+				return -1;
+			}
+			ap = arg;
+		} else
+			*ap++ = *p;
+
+		if (bslash == 1)
+			bslash = 0;
+		else if ( *p == '\\' )
+			bslash = 1;
+	}
+	/* last argument */
+	*ap = '\0';
+	++argc;
+	if (!(reargv = realloc(*argv, sizeof(**argv) * argc))) {
+		freeargs(argc - 1, *argv);
+		free(arg);
+		return -1;
+	} else
+		*argv = reargv;
+	if (!(*(*argv + argc - 1) = strdup(arg))) {
+		freeargs(argc, *argv);
+		free(arg);
+		return -1;
+	}
+			
+	free(arg);
+	return argc;
+}
+
 int
 cacheop(long ci, TUi **np, TUi *prev)
 {
 	unsigned hashval;
 	TUi *oldp;
 	long oci;
+	char **argv;
+	int argc, i;
 
 	if (!*np) {
 		if (cf == cs) {
@@ -406,23 +484,36 @@ cacheop(long ci, TUi **np, TUi *prev)
 		}
 		(*np)->next = c[ci];
 		c[ci] = *np;
+		prev = NULL;
 		++cf;
 	} else {
 		clang_disposeTranslationUnit((*np)->tu);
 		clang_disposeIndex((*np)->index);
 	}
 
-	if (!(astf = makeast())) {
+	(*np)->index = clang_createIndex(0, 0);
+
+	if (method == 0 && !(astf = makeast())) {
+		clang_disposeIndex((*np)->index);
 		freenp(ci, *np, prev);
 		--cf;
 		return -1;
+	} else if (method != 0) {
+		if ((argc = parseclargs(&argv)) == -1) {
+			clang_disposeIndex((*np)->index);
+			freenp(ci, *np, prev);
+			--cf;
+			return -1;
+		}
+		(*np)->tu = clang_createTranslationUnitFromSourceFile((*np)->index,
+			   	srcf, argc, argv, 0, NULL);
+		freeargs(argc, argv);
+	} else {
+		(*np)->tu = clang_createTranslationUnit((*np)->index, astf);
+		unlink(astf);
+		free(astf);
+		astf = NULL;
 	}
-	
-	(*np)->index = clang_createIndex(0, 0);
-	(*np)->tu = clang_createTranslationUnit((*np)->index, astf);
-	unlink(astf);
-	free(astf);
-	astf = NULL;
 	
 	return 0;
 }
@@ -441,17 +532,24 @@ gettype(CXTranslationUnit tu)
 	loc = clang_getLocation(tu, file, lnum, col);
 	cursor = clang_getCursor(tu, loc);
 	def = clang_getCursorDefinition(cursor);
-	if (clang_Cursor_isNull(def))
-		type = clang_getCursorType(cursor);
-	else 
-		type = clang_getCursorType(def);
-	typesp = clang_getTypeSpelling(type);
-	typestr = clang_getCString(typesp);
+	if (method != 0 && clang_isPreprocessing(cursor.kind)) {
+		t = strdup("<PREPROCESSOR>");
+		t_s = strlen(t) + 1;
+	}
+	else {
+		if (clang_Cursor_isNull(def))
+			type = clang_getCursorType(cursor);
+		else 
+			type = clang_getCursorType(def);
+		typesp = clang_getTypeSpelling(type);
+		typestr = clang_getCString(typesp);
+		
+		t_s = strlen(typestr) + 1;
+		t = strdup(typestr);
 	
-	t_s = strlen(typestr) + 1;
-	t = strdup(typestr);
+		clang_disposeString(typesp);
+	}
 
-	clang_disposeString(typesp);
 	if (t) return 0;
 	else return -1;
 }

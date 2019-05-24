@@ -32,6 +32,18 @@ Also see [options][] section below.
 
 ## Options
 
+### g:ctype_getmethod
+Method of retrieving data for clang Translation Units
+which is used by plugin server to obtain required types.
+
+`0` means means create AST file and retrieve data from it
+
+`1` means retrieve data from source file directly
+```vim
+let g:ctype_getmethod = 0
+```
+(numeric, default `1`)
+
 ### g:ctype_server_backlog
 Defines the maximum length to which the queue of pending
 connections for server socket may grow. Plugin
