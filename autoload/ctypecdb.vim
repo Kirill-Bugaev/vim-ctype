@@ -14,21 +14,6 @@ func s:ChooseCompileCommand(chid)
 	let bufnum = g:ctype_chan_cdb[chn].bufnr
 	let filename = g:ctype_chan_cdb[chn].filename
 
-	if g:ctype_cdb_method == 1 || g:ctype_cdb_method == 3
-		for cdb in g:ctype_chan_cdb[chn].cdbs
-			if len(cdb.commands) != 0
-				let cmd = cdb.commands[0]
-				break
-			endif
-		endfor
-		if exists('l:cmd')
-			let g:ctype_cdb[bufnum] = deepcopy(cmd)
-		else 
-			call s:LoadEmptyCompileCommand(bufnum, filename)
-		endif
-		return
-	endif
-
 "	" Clear current command line messages
 "	echon "\r\r"
 "	echon ''
@@ -38,7 +23,7 @@ func s:ChooseCompileCommand(chid)
 	" Vim doesn't show echo[m] messages on some autocmd events
 	" so put it all in input command
 	let echs = 'Results of search of'
-	if g:ctype_cdb_method == 2
+	if g:ctype_cdb_method == 1 || g:ctype_cdb_method == 2
 		let echs .= ' valid'
 	endif
 	let echs .= ' compile commands for file "' .
@@ -47,12 +32,18 @@ func s:ChooseCompileCommand(chid)
 	let cmds = []
 	let cmdn = -1
 	for cdb in g:ctype_chan_cdb[chn].cdbs
-		let echs .= '=== Compilation Database in ' . cdb.path .' directory contains ' .
-					\ cdb.comnum
-		if g:ctype_cdb_method == 2
+		let echs .= '=== Compilation Database in ' . cdb.path .' directory contains'
+		if g:ctype_cdb_method == 2 || g:ctype_cdb_method == 4
+			let echs .= ' ' . cdb.comnum
+		endif
+		if g:ctype_cdb_method == 1 || g:ctype_cdb_method == 2
 			let echs .= ' valid'
 		endif
-		let echs .= ' compile commands:' . "\n"
+		let echs .= ' compile command'
+		if g:ctype_cdb_method == 2 || g:ctype_cdb_method == 4
+			let echs .= 's'
+		endif
+		let echs .= ':' . "\n"
 		for cmd in cdb.commands
 			call add(cmds, cmd)
 			let echs .=  '--- Command #' . len(cmds) . "\n"
@@ -65,7 +56,7 @@ func s:ChooseCompileCommand(chid)
 	endfor
 
 	let echs .= 'Choose compile command (number) or press ENTER to continue: '
-	if len(cmds) > 1
+	if !g:ctype_cdb_autoload
 		let chosen_cmd = input(echs)
 	else
 		let chosen_cmd = ''

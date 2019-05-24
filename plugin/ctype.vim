@@ -1,3 +1,7 @@
+if !exists('g:ctype_getmethod')
+	let g:ctype_getmethod = 1
+endif
+
 if !exists('g:ctype_server_backlog')
 	let g:ctype_server_backlog = 10
 endif
@@ -31,7 +35,11 @@ if !exists('g:ctype_client_showerrormsg')
 endif
 
 if !exists('g:ctype_cdb_method')
-	let g:ctype_cdb_method = 1
+	let g:ctype_cdb_method = 4
+endif
+
+if !exists('g:ctype_cdb_autoload')
+	let g:ctype_cdb_autoload = 1
 endif
 
 if !exists('g:ctype_cdb_showerrormsg')
