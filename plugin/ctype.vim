@@ -139,7 +139,7 @@ func s:ServerResponse(chan, msg)
 		augroup ctype
 			au!
 			if g:ctype_oncursorhold
-				au CursorHold,CursorHoldI *.c,*.cpp
+				au CursorHold,CursorHoldI *.c,*.cpp,*.h
 							\ if !&modified ||
 							\ (g:ctype_mode == 1 && mode()[0] ==# 'n') ||
 							\ g:ctype_mode == 2 |
@@ -149,7 +149,7 @@ func s:ServerResponse(chan, msg)
 							\ let g:ctype_type = '' |
 							\ endif
 			else
-				au CursorMoved,CursorMovedI *.c,*.cpp
+				au CursorMoved,CursorMovedI *.c,*.cpp,*.h
 							\ if !&modified ||
 							\ (g:ctype_mode == 1 && mode()[0] ==# 'n') ||
 							\ g:ctype_mode == 2 |
@@ -163,18 +163,18 @@ func s:ServerResponse(chan, msg)
 			au BufEnter * let g:ctype_type = ''
 
 			if g:ctype_mode != 0
-				au TextChanged,TextChangedI,TextChangedP *.c,*.cpp
+				au TextChanged,TextChangedI,TextChangedP *.c,*.cpp,*.h
 							\ let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1
 				if g:ctype_mode == 1
-					au InsertLeave *.c,*.cpp call s:SaveBufToTmp()
+					au InsertLeave *.c,*.cpp,*.h call s:SaveBufToTmp()
 				endif
-				au BufAdd *.c,*.cpp call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))
+				au BufAdd *.c,*.cpp,*.h call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))
 				if v:vim_did_enter
 					call s:SetModAndTmp_OnVimEnter()
 				else
 					au VimEnter * call s:SetModAndTmp_OnVimEnter()
 				endif
-				au BufDelete *.c,*.cpp
+				au BufDelete *.c,*.cpp,*.h
 							\ call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))
 			endif
 		augroup END
@@ -310,7 +310,7 @@ func s:TimerHandler(timer)
 	endif
 
 	let bt = getbufvar(bufnr('%'), '&filetype') 
-	if bt ==? 'c' || bt ==? 'cpp'
+	if bt == 'c' || bt == 'cpp'
 		if g:ctype_mode == 2 || (g:ctype_mode == 1 && mode()[0] ==# 'n')
 			call s:SaveBufToTmp()
 		endif
@@ -346,8 +346,8 @@ endfunc
 
 func s:SetModAndTmp_OnVimEnter()
 	for buf_i in getbufinfo()
-		let buf_ft = fnamemodify(buf_i.name, ':e')
-		if buf_ft ==# 'c' || buf_ft ==# 'cpp'
+		let buf_ft = getbufvar(buf_i.bufnr, '&filetype')
+		if buf_ft == 'c' || buf_ft == 'cpp'
 			call s:SetModAndTmp_OnBufAdd(buf_i.bufnr)
 		endif
 	endfor
@@ -379,8 +379,8 @@ let g:ctype_cdb = {}
 
 func s:LoadCDB_OnVimEnter()
 	for buf_i in getbufinfo()
-		let buf_ft = fnamemodify(buf_i.name, ':e')
-		if buf_ft ==# 'c' || buf_ft ==# 'cpp'
+		let buf_ft = getbufvar(buf_i.bufnr, '&filetype')
+		if buf_ft == 'c' || buf_ft == 'cpp'
 			call ctypecdb#GetCDB_Entries(buf_i.bufnr, bufname(buf_i.bufnr))
 		endif
 	endfor

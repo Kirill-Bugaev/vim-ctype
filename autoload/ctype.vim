@@ -56,11 +56,11 @@ func ctype#GetType(callback)
 		call job_stop(s:client_job)
 	endif
 
-	if g:ctype_cdb_method > 0
-		if !exists('g:ctype_cdb[' . bufnr('%') . ']')
-			return
-		endif
-	endif
+"	if g:ctype_cdb_method > 0
+"		if !exists('g:ctype_cdb[' . bufnr('%') . ']')
+"			return
+"		endif
+"	endif
 
 	let [lnum, colnum] = getcurpos()[1:2]
 	let cmd = fnameescape(s:client_path) . ' ' .
@@ -74,7 +74,7 @@ func ctype#GetType(callback)
 	endif
 
 	" working dir
-	if g:ctype_cdb_method > 0
+	if g:ctype_cdb_method > 0 && exists('g:ctype_cdb['.bufnr('%').']')
 		let cmd .= ' ' . fnameescape(g:ctype_cdb[bufnr('%')].workingdir)
 	else
 		let cmd .= ' ' . fnameescape(expand('%:p:h'))
@@ -82,7 +82,7 @@ func ctype#GetType(callback)
 
 	let cmd .=  ' ' . lnum . ' ' . colnum
 
-	if getbufvar(bufnr('%'), '&filetype') ==? 'cpp'
+	if getbufvar(bufnr('%'), '&filetype') == 'cpp'
 		let cmd .= ' cpp'
 	else
 		let cmd .= ' c'
@@ -99,7 +99,7 @@ func ctype#GetType(callback)
 	let cmd .= ' "'
 
 	" cdb args
-	if g:ctype_cdb_method > 0
+	if g:ctype_cdb_method > 0 && exists('g:ctype_cdb['.bufnr('%').']')
 		let cmd .= fnameescape(g:ctype_cdb[bufnr('%')].cmdargs) . ' '
 	endif
 
