@@ -1,3 +1,10 @@
+if !exists('g:ctype_filetypes')
+	let g:ctype_filetypes = []
+	call add(g:ctype_filetypes, '*.c')
+	call add(g:ctype_filetypes, '*.cpp')
+	call add(g:ctype_filetypes, '*.h')
+endif
+
 if !exists('g:ctype_mode')
 	let g:ctype_mode = 0
 endif
@@ -124,6 +131,23 @@ func s:KillServer_OnVimLeavePre()
 	call system('kill ' . s:server_pid)
 endfunc
 
+func s:OnCursorHold()
+	call s:SaveBufToTmp()
+	call ctype#GetType(function('s:ShowType'))
+endfunc
+
+func s:OnCursorMoved()
+	let s:shown = 0
+endfunc
+
+func s:MainEvent(event)
+	if !&modified || (g:ctype_mode == 1 && mode()[0] ==# 'n') || g:ctype_mode == 2
+		exe 'call s:On' . a:event . '()'
+	else 
+		let g:ctype_type = ''
+	endif
+endfunc
+
 func s:ServerResponse(chan, msg)
 	if s:server_response_count == 0
 		let s:server_pid = a:msg
@@ -139,43 +163,33 @@ func s:ServerResponse(chan, msg)
 		augroup ctype
 			au!
 			if g:ctype_oncursorhold
-				au CursorHold,CursorHoldI *.c,*.cpp,*.h
-							\ if !&modified ||
-							\ (g:ctype_mode == 1 && mode()[0] ==# 'n') ||
-							\ g:ctype_mode == 2 |
-							\ call s:SaveBufToTmp() |
-							\ call ctype#GetType(function('s:ShowType')) |
-							\ else |
-							\ let g:ctype_type = '' |
-							\ endif
+				exe 'au CursorHold,CursorHoldI ' . join(g:ctype_filetypes, ',') .
+							\ " call s:MainEvent('CursorHold')"
 			else
-				au CursorMoved,CursorMovedI *.c,*.cpp,*.h
-							\ if !&modified ||
-							\ (g:ctype_mode == 1 && mode()[0] ==# 'n') ||
-							\ g:ctype_mode == 2 |
-							\ let s:shown = 0 |
-							\ else |
-							\ let g:ctype_type = '' |
-							\ endif
+				exe 'au CursorMoved,CursorMovedI ' . join(g:ctype_filetypes, ',') .
+							\ " call s:MainEvent('CursorMoved')"
 				call timer_start(g:ctype_timeout,
 							\ function('s:TimerHandler'), {'repeat': -1})
 			endif
 			au BufEnter * let g:ctype_type = ''
 
 			if g:ctype_mode != 0
-				au TextChanged,TextChangedI,TextChangedP *.c,*.cpp,*.h
-							\ let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1
+				exe 'au TextChanged,TextChangedI,TextChangedP ' .
+							\ join(g:ctype_filetypes, ',') .
+							\ " let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1"
 				if g:ctype_mode == 1
-					au InsertLeave *.c,*.cpp,*.h call s:SaveBufToTmp()
+					exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
+								\ ' call s:SaveBufToTmp()'
 				endif
-				au BufAdd *.c,*.cpp,*.h call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))
+				exe 'au BufAdd ' . join(g:ctype_filetypes, ',') .
+							\ " call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))"
 				if v:vim_did_enter
 					call s:SetModAndTmp_OnVimEnter()
 				else
 					au VimEnter * call s:SetModAndTmp_OnVimEnter()
 				endif
-				au BufDelete *.c,*.cpp,*.h
-							\ call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))
+				exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+							\ " call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))"
 			endif
 		augroup END
 	endif
@@ -266,7 +280,7 @@ if job_status(s:server_job) ==# 'fail'
 	echoerr "vim-ctype: can't start " . g:ctype_prefixname . s:server_name
 endif
 
-let s:shown = 1
+let s:shown = 0
 let s:lnum = 0
 let s:colnum = 0
 
@@ -369,8 +383,9 @@ if g:ctype_cdb_method > 0
 		else
 			au VimEnter * call s:LoadCDB_OnVimEnter()
 		endif
-		au BufAdd *.c,*.cpp call s:LoadCDB_OnBufAdd()
-		au BufDelete *.c,*.cpp call s:DeleteCDB_OnBufDelete()
+		exe 'au BufAdd ' . join(g:ctype_filetypes, ',') . ' call s:LoadCDB_OnBufAdd()'
+		exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+					\ ' call s:DeleteCDB_OnBufDelete()'
 	augroup END
 endif
 

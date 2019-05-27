@@ -8,13 +8,6 @@ will be used. ArchLinux users can do it with
 # pacman -S clang
 ```
 
-Plugin works not with Vim buffers,
-but with files which buffers correspond. So if you have modified
-buffer you should save it before plugin can show instance type.
-Also should be noted that plugin works correctly only with
-source code for which `AST` file can be created without errors
-(file should be compilable).
-
 Main part is `clang-gettype` utility is written on C.
 It based on client-server architecture using Unix domain sockets.
 Client accepts source code file and location
@@ -22,8 +15,23 @@ Client accepts source code file and location
 send request to server and outputs type of specified instance.
 Vimscript code wraps this functional.
 
+Plugin works not with Vim buffers,
+but with files which buffers correspond. By default if you 
+have modified buffer you should save it before plugin can show
+instance type. Also should be noticed that in this case plugin
+works correctly only with source code for which `AST` file can
+be created without errors (file should be compilable).
+
 To switch on support of C++ code you should set 
-`g:ctype_getmethod = 'ast'`. In this case to use plugin in
+`g:ctype_getmethod = 'ast'`. But hold your horses!
+AST file can be created only for `compilable` source code.
+Frequently, source code can't be compiled without appropriate
+command line arguments. If they are absent AST file will not be
+created and plugin will not work. Arguments can be specified in
+Compilation Database. How to make Compilation Database see
+ [How to make Compilation Database][below].
+Even so if you set `g:ctype_getmethod = 'ast'` it should be
+noticed that in this case to use plugin in
 mode another then let `g:ctype_mode = 0` have no sense.
 
 By default plugin shows instance type in Vim command line,
@@ -55,6 +63,13 @@ file is require, so it can be not appropriate.
 Also see [options][] section below.
 
 ## Options
+
+### g:ctype_filetypes
+There you can specify file types for which plugin will work.
+```vim
+let g:ctype_filetypes = ['*.c', '*.cpp', '*.h']
+```
+(list, default `['*.c', '*.cpp', '*.h']`)
 
 ### g:ctype_mode
 Defines plugin behavior on changes into buffer.
@@ -516,4 +531,5 @@ $ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline -I lib/tg
 
 [clang]: https://clang.llvm.org/
 [Options]: #Options
+[How to make Compilation Database]: ## How to make Compilation Database
 [cgdb]: https://github.com/cgdb/cgdb
