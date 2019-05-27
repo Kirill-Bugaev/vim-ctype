@@ -17,19 +17,33 @@ func s:ClientExit(job, exit_status)
 		if a:exit_status == 1
 			echoerr g:ctype_prefixname . s:client_name . ': not enough arguments'
 		elseif a:exit_status == 2
-			echoerr g:ctype_prefixname . s:client_name . ': invalid cursor position'
+			echoerr g:ctype_prefixname . s:client_name . ": can't access to socket file"
 		elseif a:exit_status == 3
-			echoerr g:ctype_prefixname . s:client_name . ': invalid get type method'
+			echoerr g:ctype_prefixname . s:client_name . ": can't access to source file"
 		elseif a:exit_status == 4
-			echoerr g:ctype_prefixname . s:client_name . ': invalid reparse option value'
+			echoerr g:ctype_prefixname . s:client_name . ": can't access to working directory"
 		elseif a:exit_status == 5
-			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid line number'
 		elseif a:exit_status == 6
-			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid column number'
 		elseif a:exit_status == 7
-			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid source file type'
 		elseif a:exit_status == 8
+			echoerr g:ctype_prefixname . s:client_name . ': invalid get method'
+		elseif a:exit_status == 9
+			echoerr g:ctype_prefixname . s:client_name . ": can't access to AST directory"
+		elseif a:exit_status == 10
+			echoerr g:ctype_prefixname . s:client_name . ': invalid reparse option'
+		elseif a:exit_status == 11
+			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
+		elseif a:exit_status == 12
+			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
+		elseif a:exit_status == 13
+			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
+		elseif a:exit_status == 14
 			echoerr g:ctype_prefixname . s:client_name . ": can't receive data from server"
+		elseif a:exit_status == 15
+			echoerr g:ctype_prefixname . s:client_name . ': clang request faild'
 		endif
 		echoerr g:ctype_prefixname . s:client_name . ' exited with code = ' . a:exit_status
 	endif
@@ -50,8 +64,14 @@ func ctype#GetType(callback)
 
 	let [lnum, colnum] = getcurpos()[1:2]
 	let cmd = fnameescape(s:client_path) . ' ' .
-				\ fnameescape(g:ctype_socket_file) . ' ' .
-				\ fnameescape(expand('%:p'))
+				\ fnameescape(g:ctype_socket_file) . ' '
+	
+	if g:ctype_mode == 0 ||
+				\ getfsize(g:ctype_mode_1_2_tmpbufentr[bufnr('%')].tmpfile) <= 0
+		let cmd .= fnameescape(expand('%:p'))
+	else
+		let cmd .= fnameescape(g:ctype_mode_1_2_tmpbufentr[bufnr('%')].tmpfile)
+	endif
 
 	" working dir
 	if g:ctype_cdb_method > 0
@@ -62,9 +82,19 @@ func ctype#GetType(callback)
 
 	let cmd .=  ' ' . lnum . ' ' . colnum
 
+	if getbufvar(bufnr('%'), '&filetype') ==? 'cpp'
+		let cmd .= ' cpp'
+	else
+		let cmd .= ' c'
+	endif
+
 	let cmd .= ' ' . g:ctype_getmethod
 
-	let cmd .= ' ' . g:ctype_reparsetu
+	if g:ctype_getmethod ==? 'ast'
+		let cmd .= ' ' .g:ctype_astdir
+	else
+		let cmd .= ' ' . g:ctype_reparsetu
+	endif
 
 	let cmd .= ' "'
 

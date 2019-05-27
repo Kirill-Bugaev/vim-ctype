@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -25,12 +26,12 @@ static void clangcheck(void);
 static void clangcheck(void);
 static void getsockf(void);
 static void starserv(void);
+static int readstrquery(qsize *, char **);
 static int recvquery(void);
+static int senderr(void);
 static int sendtype(void);
 
 static int cfd;	/* socket */
-static char srcf[PATH_MAX];	/* source file */
-static char wd[PATH_MAX];	/* working dir */
 
 static void sighandler(int);
 static void catchsigs(void);
@@ -58,7 +59,7 @@ static int cacheop(long, TUi **, TUi *);
 static int gettype(CXTranslationUnit);
 static int clangreq(void);
 
-static TUi **c;	/* Translation Unit item */
+static TUi **c;	/* Translation Unit cache */
 static unsigned cf = 0;	/* cache fullness */
 static char *astf = NULL;	/* AST file */
 
@@ -82,6 +83,24 @@ enum errors {
 	CLESCERR,
 	CLMEMERR,
 	CLEXEERR,
+};
+
+enum clreqerrs {
+	REQSTATERR = 1,
+	REQFNDOLDERR,
+	REQALLOCTUIERR,
+	REQASTPATHERR,
+	REQASTTMPERR,
+	REQASTCHILDERR,
+	REQASTWAITERR,
+	REQASTCHDIRERR,
+	REQASTESCERR,
+	REQASTCMDERR,
+	REQASTEXEERR,
+	REQASTCLERR,
+	REQPARSERR,
+	REQCPPARGERR,
+	REQGETTYPERR,
 };
 
 void
@@ -171,48 +190,73 @@ starserv(void)
 }
 
 int
+readstrquery(qsize *s, char **str)
+{
+	if (*str) {
+		free(*str);
+		*str = NULL;
+	}
+	if (read(cfd, s, sizeof(*s)) != sizeof(*s))
+		return -1;
+	if (*s != 0) {
+		if (!(*str = malloc(*s)))
+			return -1;
+		if (read(cfd, *str, *s) != *s) {
+			free(*str);
+			*str = NULL;
+			return -1;
+		}
+	} else {
+		if (!(*str = malloc(1)))
+			return -1;
+		**str = '\0';
+	}
+	return 0;
+}
+
+int
 recvquery(void)
 {
 	if (setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&srto,
                 sizeof(srto)) == -1)
 		return -1;
 	
-	if ( read(cfd, &srcf_s, sizeof(srcf_s)) != sizeof(srcf_s) ||
-			read(cfd, srcf, srcf_s) != srcf_s ||
-			read(cfd, &wd_s, sizeof(wd_s)) != sizeof(wd_s) ||
-			read(cfd, wd, wd_s) != wd_s ||
+	if ( readstrquery(&srcf_s, &srcf) == -1 |
+			readstrquery(&wd_s, &wd) == -1 ||
 			read(cfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
 			read(cfd, &col, sizeof(col)) != sizeof(col) ||
-			read(cfd, &method, sizeof(method)) != sizeof(method) ||
-			read(cfd, &reparse, sizeof(reparse)) != sizeof(reparse) )
+			readstrquery(&srct_s, &srct) == -1 ||
+			readstrquery(&method_s, &method) == -1 )
 		return -1;
 
-	if (clargs) {
-		free(clargs);
-		clargs = NULL;
-	}
-	if (read(cfd, &clargs_s, sizeof(clargs_s)) != sizeof(clargs_s))
-		return -1;
-	if (clargs_s != 0) {
-		if (!(clargs = malloc(clargs_s)))
+	if (strcasecmp(method, "ast") == 0) {
+		if (readstrquery(&astdir_s, &astdir) == -1)
 			return -1;
-		if (read(cfd, clargs, clargs_s) != clargs_s) {
-			free(clargs);
-			clargs = NULL;
+	} else
+		if (read(cfd, &reparse, sizeof(reparse)) != sizeof(reparse))
 			return -1;
-		}
-	} else {
-		if (!(clargs = malloc(1)))
-			return -1;
-		*clargs = '\0';
-	}
 
+	if (readstrquery(&clargs_s, &clargs) == -1)
+		return -1;
+
+	return 0;
+}
+
+int
+senderr(void)
+{
+	if (write(cfd, &clreqerr, sizeof(clreqerr)) != sizeof(clreqerr))
+		return -1;
 	return 0;
 }
 
 int
 sendtype(void)
 {
+	clreqerr = 0;
+	if (senderr() == -1)
+		return -1;
+
 	if ( write(cfd, &t_s, sizeof(t_s)) != sizeof(t_s) ||
 			write(cfd, t, t_s) != t_s )
 		return -1;
@@ -269,20 +313,38 @@ getfn(char *path)
 char *
 makeast(void)
 {
-	char *clang, *ext, *af;
-	int fd;
+	char *clang, *ext, *af, *ad;
+	int fd, aflen;
 	unsigned cmdsize;
+	int st, es;
 
-	if ((ext = strrchr(srcf, '.')) && strcmp(ext, (char *) &".cpp") == 0)
+	if (*srct == '\0') {
+		if ((ext = strrchr(srcf, '.')) && strcasecmp(ext, (char *) &".cpp") == 0)
+			clang = clppcmd;
+		else
+			clang = clcmd;
+	} else if (strcasecmp(srct, "cpp"))
 		clang = clppcmd;
 	else
 		clang = clcmd;
 
-	if (!( af = strdup(astff) ))
+	if (*astdir == '\0') 
+		ad = astdefdir;
+	else
+		ad = astdir;
+	aflen = strlen(ad) + 1 + strlen(astff);
+	if (!(af = malloc(aflen + 1))) {
+		clreqerr = REQASTPATHERR;
 		return NULL;
-	
+	}
+	*af = '\0';
+	strcat(af, ad);
+	strcat(af, "/");
+	strcat(af, astff);
+
 	if ((fd = mkstemp(af)) == -1) {
 		free(af);
+		clreqerr = REQASTTMPERR;
 		return NULL;
 	}
 	close(fd);
@@ -329,15 +391,32 @@ makeast(void)
 		/* --- end of child process --- */
 	} else if (p == -1) {
 		free(af);
+		clreqerr = REQASTCHILDERR;
 		return NULL;
 	}
-	int st;
 	if (waitpid(p, &st , 0) == -1) {
 		free(af);
+		clreqerr = REQASTWAITERR;
 		return NULL;
 	}
-	if (WIFEXITED(st) && WEXITSTATUS(st) != 0) {
+	if (WIFEXITED(st) && (es = WEXITSTATUS(st)) != 0) {
 		free(af);
+		switch (es) {
+			case CLCHDIRERR:
+				clreqerr = REQASTCHDIRERR;
+				break;
+			case CLESCERR:
+				clreqerr = REQASTESCERR;
+				break;
+			case CLMEMERR:
+				clreqerr = REQASTCMDERR;
+				break;
+			case CLEXEERR:
+				clreqerr = REQASTEXEERR;
+				break;
+			default:
+				clreqerr = REQASTCLERR;
+		}
 		return NULL;
     }
 
@@ -392,7 +471,8 @@ freeargs(int argc, char *argv[])
 	int i;
 
 	for (i = 0; i < argc; ++i)
-		free(*(argv + i));
+		if (*(argv + i))
+			free(*(argv + i));
 	if (argv)
 		free(argv);
 }
@@ -468,8 +548,10 @@ cacheop(long ci, TUi **np, TUi *prev)
 
 	if (!*np) {
 		if (cf == cs) {
-			if ((oci = findold(&oldp, &prev)) == -1)
+			if ((oci = findold(&oldp, &prev)) == -1) {
+				clreqerr = REQFNDOLDERR;
 				return -1;
+			}
 			removci(oci, oldp, prev);
 		}
 		if (!( *np = malloc(sizeof(TUi)) ) ||
@@ -479,6 +561,7 @@ cacheop(long ci, TUi **np, TUi *prev)
 					free((*np)->srcf);
 			   	free(*np);
 			}
+			clreqerr = REQALLOCTUIERR;
 			return -1;
 		}
 		(*np)->next = c[ci];
@@ -486,7 +569,7 @@ cacheop(long ci, TUi **np, TUi *prev)
 		prev = NULL;
 		++cf;
 	} else {
-		if (method != 0 && reparse) {
+		if (strcasecmp(method, "ast") != 0 && reparse) {
 			clang_reparseTranslationUnit((*np)->tu, 0, NULL,
 					clang_defaultReparseOptions((*np)->tu));
 			return 0;
@@ -497,16 +580,17 @@ cacheop(long ci, TUi **np, TUi *prev)
 
 	(*np)->index = clang_createIndex(0, 0);
 
-	if (method == 0 && !(astf = makeast())) {
+	if (strcasecmp(method, "ast") == 0 && !(astf = makeast())) {
 		clang_disposeIndex((*np)->index);
 		freenp(ci, *np, prev);
 		--cf;
 		return -1;
-	} else if (method != 0) {
+	} else if (strcasecmp(method, "ast") != 0) {
 		if ((argc = parseclargs(&argv)) == -1) {
 			clang_disposeIndex((*np)->index);
 			freenp(ci, *np, prev);
 			--cf;
+			clreqerr = REQPARSERR;
 			return -1;
 		}
 		(*np)->tu = clang_createTranslationUnitFromSourceFile((*np)->index,
@@ -536,7 +620,7 @@ gettype(CXTranslationUnit tu)
 	loc = clang_getLocation(tu, file, lnum, col);
 	cursor = clang_getCursor(tu, loc);
 	def = clang_getCursorDefinition(cursor);
-	if (method != 0 && clang_isPreprocessing(cursor.kind)) {
+	if (strcasecmp(method, "ast") != 0 && clang_isPreprocessing(cursor.kind)) {
 		t = strdup("<PREPROCESSOR>");
 		t_s = strlen(t) + 1;
 	}
@@ -547,7 +631,6 @@ gettype(CXTranslationUnit tu)
 			type = clang_getCursorType(def);
 		typesp = clang_getTypeSpelling(type);
 		typestr = clang_getCString(typesp);
-		
 		t_s = strlen(typestr) + 1;
 		t = strdup(typestr);
 	
@@ -566,8 +649,10 @@ clangreq(void)
 	int mod = 0;
 	long ci;
 
-	if (stat(srcf, &stbuf) == -1)
+	if (stat(srcf, &stbuf) == -1) {
+		clreqerr = REQSTATERR;
 		return -1;
+	}
 	ci = lookup(srcf, &np, &prev);
 	if (np) {
 		/* check modification time of source file */
@@ -584,10 +669,12 @@ clangreq(void)
 	}
 	np->la = time(NULL);
 	
-	if (gettype(np->tu) != -1)
-		return 0;
-	else
-	   	return -1;
+	if (gettype(np->tu) == -1) {
+		clreqerr = REQGETTYPERR;
+		return -1;
+	}
+
+	return 0;
 }
 
 void sighandler(int signo)
@@ -649,8 +736,10 @@ main(int argc, char *argv[])
 	while((cfd = accept(sfd, (struct sockaddr *) &addr, &addrl)) != -1) {
 		if (recvquery() == -1)
 			goto cont;
-		if (clangreq() == -1)
+		if (clangreq() == -1) {
+			senderr();
 			goto cont;
+		}
 		if (sendtype() == -1) {
 			free(t);
 			goto cont;

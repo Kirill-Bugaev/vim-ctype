@@ -12,4 +12,5 @@ static long cs = 20;	/* cache size, 1 is minimum */
 static char *clcmd = "/usr/bin/clang";
 static char *clppcmd = "/usr/bin/clang++";
 static char sd[] = "/tmp/clang-gettype-socket-XXXXXX";
-static const char astff[] = {"/tmp/clang-gettype-ast-XXXXXX"};
+static char *astdefdir = "/tmp";
+static const char *astff = "clang-gettype-ast-XXXXXX";

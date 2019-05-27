@@ -16,39 +16,119 @@ source code for which `AST` file can be created without errors
 (file should be compilable).
 
 Main part is `clang-gettype` utility is written on C.
-It based on client-server architecture using unix domain sockets.
+It based on client-server architecture using Unix domain sockets.
 Client accepts source code file and location
 (line number and column) of instance as command line arguments,
 send request to server and outputs type of specified instance.
 Vimscript code wraps this functional.
-By default it shows instance type in Vim command line,
+
+To switch on support of C++ code you should set 
+`g:ctype_getmethod = 'ast'`. In this case to use plugin in
+mode another then let `g:ctype_mode = 0` have no sense.
+
+By default plugin shows instance type in Vim command line,
 but this behavior can be changed. Last received instance type
 always is available in `g:ctype_type` variable, so you can direct
 output to Vim statusline:
 ```vim
 set statusline += %{g:ctype_type}
 ```
+
+By default plugin is switching off when buffer is modified.
+This behaviour can be changed. You can set `g:ctype_mode = 1`
+and plugin still will work when modification has been made
+in Vim Normal Mode or modification has been made in Insert Mode
+and then you switching to Normal Mode. Or you can set
+`g:ctype_mode = 2` and plugin will work in Insert Mode also.
+But you should to know, that temporary file for buffer
+content will be created and rewritten each time you make
+modification. This operation require usage of system resources.
+Solution is set `g:ctype_tmpdir = '/dev/shm'` and
+`g:ctype_astdir = '/dev/shm'`. In this case temporary and AST
+files will be written in memory that is mach faster then
+writing on hard drive. Another is set
+`g:ctype_getmethod = 'source'` (default value). In this case
+plugin will parse source code directly without generating AST
+file, but you should to know that for parsing of C++ code AST
+file is require, so it can be not appropriate.
+
 Also see [options][] section below.
 
 ## Options
+
+### g:ctype_mode
+Defines plugin behavior on changes into buffer.
+
+`0` means disable plugin until changes is written to file.
+Translation Unit will be updated each time as writing.
+
+`1` means disable plugin only for Vim Insert Mode until
+changes is written to file. Translation Unit will be
+updated on timer after each buffer modification
+in Normal Mode.
+
+`2` means not disable plugin at all. Translation
+Units will be updated on timer after each modification
+in both modes.
+
+It has no sense to use modes `1` and `2` with
+`g:ctype_getmethod = 'ast'` (see below) because this
+method requires compilable source code which is not
+always realized when you make corrections. So it is
+better to set `g:ctype_getmethod = 'source'` (default
+value) in this case. But you should to know that for
+C++ code `g:ctype_getmethod = 'ast'` is required.
+
+Also these modes require to save modified buffer in
+temporary file to create Translation Unit. It may slow
+down Vim. So I strongly recommend to set 
+`g:ctype_tmpdir = '/dev/shm'` and
+`g:ctype_astdir = '/dev/shm'` or another shared memory
+directory.
+```vim
+let g:ctype_mode = 1
+```
+(numeric, default `1`)
+
+### g:ctype_tmpdir
+Defines temporary directory for saving changed buffers.
+Make sense only with `g:ctype_mode = 1` or
+`g:ctype_mode = 2`.
+```vim
+let g:ctype_tmpdir = '/dev/shm'
+```
+(string, default `'/tmp'`)
 
 ### g:ctype_getmethod
 Method of retrieving data for clang Translation Units
 which is used by plugin server to obtain required types.
 
-`0` means means create AST file and retrieve data from it
+`'ast'` means create AST file and retrieve data from it
 
-`1` means retrieve data from source file directly
+`"source"` means retrieve data from source file directly
+
+Notice that for C++ code parsing AST file is required, so 
+plugin will not work into C++ buffers with
+`g:ctype_getmethod = 'source'`. 
 ```vim
-let g:ctype_getmethod = 0
+let g:ctype_getmethod = 'ast'
 ```
-(numeric, default `1`)
+(string, default `'source'`)
+
+### g:ctype_astdir
+Defines temporary directory where AST files will be
+created.
+
+Make sense only with `g:ctype_getmethod = 'ast'`.
+```vim
+let g:ctype_astdir = '/dev/shm'
+```
+(string, default `'/tmp'`)
 
 ### g:ctype_reparsetu
 Defines will Translation Unit be reparsed or created again
 when source file is changed. Clang docs declare that reparse
-is more more efficient. Make sense only with
-`let g:ctype_getmethod = 1`.
+is more more efficient. 
 
 `0` means new Translation Unit will be created.
 
@@ -56,6 +136,7 @@ is more more efficient. Make sense only with
 arguments which was used when Translation Unit had been
 created.
 
+Make sense only with `g:ctype_getmethod = 'source'`.
 ```vim
 let g:ctype_reparsetu = 0
 ```
@@ -64,7 +145,7 @@ let g:ctype_reparsetu = 0
 ### g:ctype_server_backlog
 Defines the maximum length to which the queue of pending
 connections for server socket may grow. Plugin
-kill previous request to server before start new.
+kills previous request to server before starts new.
 So, in theory, this option shouldn't influence on plugin
 work.
 ```vim
@@ -75,7 +156,7 @@ let g:ctype_server_backlog = 15
 ### g:ctype_server_receivetimeout
 Defines timeout (microseconds) for waiting request from
 client on server. After this time elapsed request will
-considered overdue and will not processed by server.
+considered overdue and will not processed.
 If your system is too slow you can try to increase this
 value.
 ```vim
@@ -84,7 +165,7 @@ let g:ctype_server_receivetimeout = 20000
 (numeric, default `10000`)
 
 ### g:ctype_server_cachesize
-Server make cache of `Translation Unit` created from `AST`
+Server makes cache of `Translation Unit` created from `AST`
 file generated for source code file which instance type
 is requested. So it can process requests for the same
 source code file much faster, because doesn't need
@@ -188,8 +269,9 @@ let g:ctype_oncursorhold = 0
 
 ### ctype_timeout
 Time value (in milliseconds) after which plugin will repeat
-request for type of instance under cursor. Make sense only
-when `g:ctype_oncursorhold = 0`.
+request for type of instance under cursor and save modified
+buffer into temporary file. Make sense only when
+`g:ctype_oncursorhold = 0`.
 ```vim
 let g:ctype_timeout = 100
 ```
@@ -239,7 +321,7 @@ After running this command or adding
 `CMakeLists.txt` script `compile_commands.json` file appears
 in project root directory. It contains command line arguments 
 for compilation process well then required for making `AST`
-file. If `g:ctype_cdb_method` option is setted `1` or `2`
+file. If `g:ctype_cdb_method` option is not `0`
 plugin will find compilation arguments in this file
 automatically and use it for making `AST`.
 
@@ -283,7 +365,7 @@ lib/util/cgdb_clog.h:13:10: fatal error: 'config.h' file not found
 ```
 
 Now we see that compiler can't find `config.h` header file and
-it is really absent in undeployed `cgdb` project. Need fix it.
+it is really absent in not deployed `cgdb` project. Need fix it.
 We should follow instructions which are described in `README.md`
 file in root directory of `cgdb` project to deploy it. Let's
 run `./autogen.sh` to generate configure script. 
@@ -422,7 +504,7 @@ file of project separately) with arguments obtained above.
 
 Also you can generate `compile_commands.json` automatically
 using `-MJ` command line argument for `clang`. But be careful,
-it creates new `compile_commands.json` file each time it run, so previous
+it creates new `compile_commands.json` file each time it runs, so previous
 entries will be removed. And don't forget add `[` and `]`
 brackets at the beginning and the end of `compile_commands.json`
 file manually because `clang` creates it without, which is not

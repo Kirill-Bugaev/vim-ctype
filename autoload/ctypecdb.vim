@@ -85,7 +85,7 @@ func s:ChooseCompileCommand(chid)
 	endif
 endfunc
 
-func s:ChooseCC_OnCurMoved(chid)
+func s:ChooseCC_OnEvent(chid)
 	call s:ChooseCompileCommand(a:chid)
 	exe 'augroup ctype-cdb-choosecc-' . a:chid
 		au!
@@ -151,8 +151,9 @@ func s:ClangCDB_Close(chan)
 		" Make choose of compile command synchronous
 		exe 'augroup ctype-cdb-choosecc-' . chid
 			au!
-			exe 'au User *.c,*.cpp ' .
-						\ 'call s:ChooseCC_OnCurMoved(' . chid . ')'
+"			exe 'au CursorMoved,CursorMovedI,CursorHold,CursorHoldI' .
+			exe 'au User' .
+						\ ' *.c,*.cpp call s:ChooseCC_OnEvent(' . chid . ')'
 		augroup END
 		exe 'do ctype-cdb-choosecc-' . chid . ' User'
 	else
@@ -192,10 +193,10 @@ func s:ClangCDB_Exit(job, exit_status)
 	endif
 endfunc
 
-func ctypecdb#GetCDB_Entries(bufnr, filename, method)
+func ctypecdb#GetCDB_Entries(bufnr, filename)
 	let cmd = fnameescape(s:clangcdb_path) . ' ' .
 				\ fnameescape(a:filename) .
-				\ ' ' . a:method
+				\ ' ' . g:ctype_cdb_method
 	let job = job_start(cmd,
 				\ {'out_cb': function('s:CDB_Response'),
 				\ 'close_cb': function('s:ClangCDB_Close'),
