@@ -19,9 +19,19 @@ Plugin works not with Vim buffers,
 but with files which buffers correspond. By default if you 
 have modified buffer you should save it before plugin can show
 instance type. This behaviour can be changed by setting 
-`g:ctype_mode = 1` or `g:ctype_mode = 2`. In this case plugin
-will work with modified buffer in Vim Normal Mode or in both
-modes respectively. 
+`g:ctype_mode = 1` or `g:ctype_mode = 2` (see below). In this case
+plugin will work with modified buffer in Vim Normal Mode or in both
+modes respectively. Temporary file for buffer
+content will be created and rewritten each time you make
+modification. This operation requires usage of system resources.
+Solution is set `g:ctype_tmpdir = '/dev/shm'` and
+`g:ctype_astdir = '/dev/shm'`. In this case temporary and AST
+files will be written in memory that is mach faster then
+writing on hard drive. Another is set
+`g:ctype_getmethod = 'source'` (default value). In this case
+plugin will parse source code directly without generating AST
+file, but should be noticed that for parsing of C++ code AST
+file is require, so it can be not appropriate.
 
 To switch on support of C++ code you should set 
 `g:ctype_getmethod = 'ast'`. But hold your horses!
@@ -29,8 +39,7 @@ AST file can be created only for `compilable` source code.
 Frequently, source code can't be compiled without appropriate
 command line arguments. If they are absent AST file will not be
 created and plugin will not work. Arguments can be specified in
-Compilation Database. How to make Compilation Database see
- [How to make Compilation Database][below].
+Compilation Database. How to make Compilation Database see below.
 Even so if you set `g:ctype_getmethod = 'ast'` it should be
 noticed that in this case to use plugin in
 mode another then let `g:ctype_mode = 0` have no sense.
@@ -49,17 +58,6 @@ and plugin still will work when modification has been made
 in Vim Normal Mode or modification has been made in Insert Mode
 and then you switching to Normal Mode. Or you can set
 `g:ctype_mode = 2` and plugin will work in Insert Mode also.
-But you should to know, that temporary file for buffer
-content will be created and rewritten each time you make
-modification. This operation require usage of system resources.
-Solution is set `g:ctype_tmpdir = '/dev/shm'` and
-`g:ctype_astdir = '/dev/shm'`. In this case temporary and AST
-files will be written in memory that is mach faster then
-writing on hard drive. Another is set
-`g:ctype_getmethod = 'source'` (default value). In this case
-plugin will parse source code directly without generating AST
-file, but you should to know that for parsing of C++ code AST
-file is require, so it can be not appropriate.
 
 Also see [options][] section below.
 
@@ -553,5 +551,4 @@ $ clang++ -emit-ast cgdb/cgdb.cpp -o /dev/null -I lib/kui -I lib/rline -I lib/tg
 
 [clang]: https://clang.llvm.org/
 [Options]: #Options
-[How to make Compilation Database]: ## How to make Compilation Database
 [cgdb]: https://github.com/cgdb/cgdb
