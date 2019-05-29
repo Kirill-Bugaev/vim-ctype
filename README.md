@@ -67,7 +67,7 @@ Also see [options][] section below.
 
 ### g:ctype_autostart
 Defines would plugin starts automatically on Vim start.
-If `0`  you can start manually by `CTypeStartServer`
+If `0`  you can start manually by `CTypeStart`
 command.
 ```vim
 let g:ctype_autostart = 1
@@ -319,6 +319,9 @@ let g:ctype_cdb_showerrormsg = 0
 (boolean, default `0`)
 
 ## Commands
+
+### `CTypeStart`
+Same as `CTypeStartServer`.
 
 ### `CTypeStartServer`
 Starts plugin work (starts `ctype-server`).

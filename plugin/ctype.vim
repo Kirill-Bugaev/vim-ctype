@@ -500,6 +500,8 @@ func s:UpdateCDBAll()
 	endfor
 endfunc
 
+command! -bar -nargs=0 CTypeStart
+			\ call s:StartServer(1)
 command! -bar -nargs=0 CTypeStartServer
 			\ call s:StartServer(1)
 command! -bar -nargs=0 CTypeStopServer
