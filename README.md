@@ -18,9 +18,10 @@ Vimscript code wraps this functional.
 Plugin works not with Vim buffers,
 but with files which buffers correspond. By default if you 
 have modified buffer you should save it before plugin can show
-instance type. Also should be noticed that in this case plugin
-works correctly only with source code for which `AST` file can
-be created without errors (file should be compilable).
+instance type. This behaviour can be changed by setting 
+`g:ctype_mode = 1` or `g:ctype_mode = 2`. In this case plugin
+will work with modified buffer in Vim Normal Mode or in both
+modes respectively. 
 
 To switch on support of C++ code you should set 
 `g:ctype_getmethod = 'ast'`. But hold your horses!
