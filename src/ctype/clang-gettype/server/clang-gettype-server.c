@@ -30,6 +30,7 @@ static int readstrquery(qsize *, char **);
 static int recvquery(void);
 static int senderr(void);
 static int sendtype(void);
+static int sendstatus(void);
 
 static int cfd;	/* socket */
 
@@ -221,6 +222,11 @@ recvquery(void)
                 sizeof(srto)) == -1)
 		return -1;
 	
+	if (read(cfd, &qt, sizeof(qt)) != sizeof(qt))
+		return -1;
+	if (qt != 0)
+		return 0;
+
 	if ( readstrquery(&srcf_s, &srcf) == -1 |
 			readstrquery(&wd_s, &wd) == -1 ||
 			read(cfd, &lnum, sizeof(lnum)) != sizeof(lnum) ||
@@ -259,6 +265,14 @@ sendtype(void)
 
 	if ( write(cfd, &t_s, sizeof(t_s)) != sizeof(t_s) ||
 			write(cfd, t, t_s) != t_s )
+		return -1;
+	return 0;
+}
+
+int
+sendstatus(void)
+{
+	if (write(cfd, &qt, sizeof(qt)) != sizeof(qt))
 		return -1;
 	return 0;
 }
@@ -736,15 +750,20 @@ main(int argc, char *argv[])
 	while((cfd = accept(sfd, (struct sockaddr *) &addr, &addrl)) != -1) {
 		if (recvquery() == -1)
 			goto cont;
-		if (clangreq() == -1) {
-			senderr();
-			goto cont;
-		}
-		if (sendtype() == -1) {
+		if (qt == 0) {
+			if (clangreq() == -1) {
+				senderr();
+				goto cont;
+			}
+			sendtype();
 			free(t);
 			goto cont;
+		} else {
+			sendstatus();
+			if (qt == 2)
+				sighandler(SIGTERM);
+			goto cont;
 		}
-		free(t);
 cont:
 		close(cfd);
 	}

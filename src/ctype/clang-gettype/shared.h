@@ -2,6 +2,11 @@ static char *sf;	/* socket file */
 static struct sockaddr_un addr;
 static int sfd;		/* socket file descriptor */
 
+static int qt;		/* query type:
+					   0 - type request 
+					   1 - test (check server still working)
+					   2 - shutdown server */
+
 typedef int qsize;
 static char *srcf = NULL;	/* source file */
 static qsize srcf_s = 0;	/* source file string size (termnull included) */
