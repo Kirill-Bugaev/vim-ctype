@@ -323,13 +323,16 @@ let g:ctype_cdb_showerrormsg = 0
 ### `CTypeStart`
 Same as `CTypeStartServer`.
 
+### `CTypeStop`
+Same as `CTypeStopServer`.
+
 ### `CTypeStartServer`
 Starts plugin work (starts `ctype-server`).
 
 ### `CTypeStopServer`
 Stops plugin work (stops `ctype-server`).
 
-### `CTypeStopServer`
+### `CTypeRestartServer`
 Restarts `ctype-server`.
 
 ### `CTypeCheckServer`
