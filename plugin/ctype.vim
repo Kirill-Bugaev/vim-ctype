@@ -1,8 +1,32 @@
+if !exists('g:ctype_autostart')
+	let g:ctype_autostart = 1
+endif
+
 if !exists('g:ctype_filetypes')
 	let g:ctype_filetypes = []
 	call add(g:ctype_filetypes, '*.c')
 	call add(g:ctype_filetypes, '*.cpp')
 	call add(g:ctype_filetypes, '*.h')
+endif
+
+if !exists('g:ctype_oncursorhold')
+	let g:ctype_oncursorhold = 0
+endif
+
+if !exists('g:ctype_timeout')
+	let g:ctype_timeout = 200
+endif
+
+if !exists('g:ctype_echo')
+	let g:ctype_echo = 1
+endif
+
+if !exists('g:ctype_updatestl')
+	if g:ctype_echo
+		let g:ctype_updatestl = 0
+	else
+		let g:ctype_updatestl = 1
+	endif
 endif
 
 if !exists('g:ctype_mode')
@@ -69,24 +93,9 @@ if !exists('g:ctype_cdb_showerrormsg')
 	let g:ctype_cdb_showerrormsg = 0
 endif
 
-if !exists('g:ctype_timeout')
-	let g:ctype_timeout = 200
-endif
-
-if !exists('g:ctype_echo')
-	let g:ctype_echo = 1
-endif
-
-if !exists('g:ctype_updatestl')
-	if g:ctype_echo
-		let g:ctype_updatestl = 0
-	else
-		let g:ctype_updatestl = 1
-	endif
-endif
-
 let g:ctype_prefixname = 'ctype-'
 let g:ctype_socket_file = 'empty'
+let g:ctype_servcontresp = 0
 " On mode 1 and 2 we need to save for each buffer:
 " 	.tmpfile
 "	.modified
@@ -108,65 +117,12 @@ let s:server_name = 'server'
 let s:server_pid = -1
 let s:server_response_count = 0
 let s:timerid = -1
+let s:sent = 0
+let s:lnum = 0
+let s:colnum = 0
 
-augroup clang-gettype-server
-	au!
-	au VimLeave * call s:KillServer_OnVimLeave()
-augroup END
-
-func s:ServerStateResponse(chan, msg)
-	if a:msg == 1
-		echom g:ctype_prefixname . s:server_name . ' is running'
-	elseif a:msg == 2
-		" Wait until server stops
-		let timeout = 2000
-		let sleeptime = 500
-		let elapsedtime = 0
-		while len(system('ps --noheaders --pid ' . s:server_pid)) != 0 &&
-					\ elapsedtime <= timeout
-			exe 'sleep ' . sleeptime . ' m'
-			let elapsedtime += sleeptime
-		endwhile
-
-		if len(system('ps --noheaders --pid ' . s:server_pid)) == 0
-			for key in keys(g:ctype_mode_1_2_tmpbufentr)
-				call delete(g:ctype_mode_1_2_tmpbufentr[key].tmpfile)
-				call remove(g:ctype_mode_1_2_tmpbufentr, key)
-			endfor
-
-			call timer_stop(s:timerid)
-			augroup ctype
-				au!
-			augroup END
-
-			let g:ctype_type = ''
-			if g:ctype_updatestl
-				call setwinvar(winnr(), '&statusline', &statusline)
-			endif
-
-			let s:server_pid = -1
-
-			echom g:ctype_prefixname . s:server_name . ': stopped'
-		else
-			if g:ctype_server_showerrormsg
-				echoerr g:ctype_prefixname . s:server_name . ": can't stop"
-			endif
-		endif
-	endif
-endfunc
-
-func s:KillServer_OnVimLeave()
-	if s:server_pid != -1
-		call ctype#SendQueryToServer(2, function('s:ServerStateResponse'))
-		" Wait until server stops
-		let timeout = 2000
-		let sleeptime = 50
-		let elapsedtime = 0
-		while s:server_pid != -1 && elapsedtime <= timeout
-			exe 'sleep ' . sleeptime . ' m'
-			let elapsedtime += sleeptime
-		endwhile
-	endif
+func s:StopServer_OnVimLeave()
+	call s:StopServer(0)
 endfunc
 
 func s:OnCursorHold()
@@ -175,7 +131,7 @@ func s:OnCursorHold()
 endfunc
 
 func s:OnCursorMoved()
-	let s:shown = 0
+	let s:sent = 0
 endfunc
 
 func s:MainEvent(event)
@@ -186,45 +142,21 @@ func s:MainEvent(event)
 	endif
 endfunc
 
-func s:ServerResponse(chan, msg)
-	if s:server_response_count == 0
-		let s:server_pid = a:msg
-	elseif s:server_response_count == 1
-		let g:ctype_socket_file = a:msg
-		augroup ctype
-			au!
-			if g:ctype_oncursorhold
-				exe 'au CursorHold,CursorHoldI ' . join(g:ctype_filetypes, ',') .
-							\ " call s:MainEvent('CursorHold')"
-				if g:ctype_mode == 1
-					exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
-								\ ' call s:SaveBufToTmp()'
-				endif
-			else
-				exe 'au CursorMoved,CursorMovedI ' . join(g:ctype_filetypes, ',') .
-							\ " call s:MainEvent('CursorMoved')"
-				let s:timerid = timer_start(g:ctype_timeout,
-							\ function('s:TimerHandler'), {'repeat': -1})
+func s:SaveBufToTmp()
+	let bufnum = bufnr('%')
+	if g:ctype_mode_1_2_tmpbufentr[bufnum].modified == 1
+		try
+			call writefile(getline(1, '$'), g:ctype_mode_1_2_tmpbufentr[bufnum].tmpfile)
+			let g:ctype_mode_1_2_tmpbufentr[bufnum].modified = 0
+			let g:ctype_mode_1_2_tmpbufentr[bufnum].writerr = 0
+		catch
+			if g:ctype_mode_1_2_tmpbufentr[bufnum].writerr == 0
+				let g:ctype_mode_1_2_tmpbufentr[bufnum].writerr = 1
+				echoerr "ctype: can't write temporary file with buffer content. " .
+							\ 'Check g:ctype_tmpdir option value.'
 			endif
-			au BufEnter * let g:ctype_type = ''
-
-			if g:ctype_mode != 0
-				exe 'au TextChanged,TextChangedI,TextChangedP ' .
-							\ join(g:ctype_filetypes, ',') .
-							\ " let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1"
-				exe 'au BufAdd ' . join(g:ctype_filetypes, ',') .
-							\ " call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))"
-				if v:vim_did_enter
-					call s:SetModAndTmp_OnVimEnter()
-				else
-					au VimEnter * call s:SetModAndTmp_OnVimEnter()
-				endif
-				exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
-							\ " call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))"
-			endif
-		augroup END
+		endtry
 	endif
-	let s:server_response_count +=1
 endfunc
 
 func s:EchoClangRequestError(errcode)
@@ -266,103 +198,6 @@ func s:EchoClangRequestError(errcode)
 	endif
 endfunc
 
-func s:ServerExit(job, exit_status)
-	if a:exit_status == 0
-		return
-	endif
-
-	if g:ctype_server_showerrormsg
-		if a:exit_status == 1
-			echoerr g:ctype_prefixname . s:server_name . ": can't fork"
-		elseif a:exit_status == 2
-			echoerr g:ctype_prefixname . s:server_name . ": can't close/redirect std*"
-		elseif a:exit_status == 3
-			echoerr g:ctype_prefixname . s:server_name . ': invalid backlog'
-		elseif a:exit_status == 4
-			echoerr g:ctype_prefixname . s:server_name . ': invalid socket receive timeout'
-		elseif a:exit_status == 5
-			echoerr g:ctype_prefixname . s:server_name . ': invalid cache size'
-		elseif a:exit_status == 6
-			echoerr g:ctype_prefixname . s:server_name . ': clang frontend not found'
-		elseif a:exit_status == 7
-			echoerr g:ctype_prefixname . s:server_name . ": can't create socket file"
-		elseif a:exit_status == 8
-			echoerr g:ctype_prefixname . s:server_name . ": can't create socket"
-		elseif a:exit_status == 9
-			echoerr g:ctype_prefixname . s:server_name . ": can't assign address to socket (bind() error)"
-		elseif a:exit_status == 10
-			echoerr g:ctype_prefixname . s:server_name . ": can't mark socket as passive (listen() error)"
-		elseif a:exit_status == 11
-			echoerr g:ctype_prefixname . s:server_name . ": can't extract connection request (accept() error)"
-		elseif a:exit_status == 12
-			echoerr g:ctype_prefixname . s:server_name . ": can't set signals handler"
-		elseif a:exit_status == 13
-			echoerr g:ctype_prefixname . s:server_name . ": can't initialize cache"
-		endif
-		echoerr g:ctype_prefixname . s:server_name . ' exited with code = ' . a:exit_status
-	endif
-endfunc
-
-func s:StartServer(showmsg)
-	if s:server_pid != -1
-		if a:showmsg || g:ctype_server_showerrormsg
-			echoerr g:ctype_prefixname . s:server_name . ': already run'
-		endif
-		return
-	endif
-
-	let s:shown = 0
-	let s:server_response_count = 0
-	let s:server_job = job_start(s:server_cmd,
-				\ {'out_cb': function('s:ServerResponse'),
-				\ 'exit_cb': function('s:ServerExit')})
-	if job_status(s:server_job) ==# 'fail'
-		if a:showmsg || g:ctype_server_showerrormsg
-			echoerr g:ctype_prefixname . s:server_name . ": can't start"
-		endif
-	elseif a:showmsg
-		echom g:ctype_prefixname . s:server_name . ': started'
-	endif
-endfunc
-
-func s:StopServer()
-	if s:server_pid == -1
-		echoerr g:ctype_prefixname . s:server_name . ': already down'
-		return
-	endif
-	
-	call ctype#SendQueryToServer(2, function('s:ServerStateResponse'))
-endfunc
-
-func s:RestartServer()
-	" Stop server if already started
-	if s:server_pid != -1
-		call ctype#SendQueryToServer(2, function('s:ServerStateResponse'))
-		" Wait until server stops
-		let timeout = 2000
-		let sleeptime = 50
-		let elapsedtime = 0
-		while s:server_pid != -1 && elapsedtime <= timeout
-			exe 'sleep ' . sleeptime . ' m'
-			let elapsedtime += sleeptime
-		endwhile
-		if s:server_pid != -1
-			if g:ctype_server_showerrormsg
-				echoerr g:ctype_prefixname . s:server_name . ": can't stop"
-			endif
-			return
-		endif
-	endif
-	call s:StartServer(1)
-endfunc
-
-" Start server
-call s:StartServer(0)
-
-let s:shown = 0
-let s:lnum = 0
-let s:colnum = 0
-
 func s:ShowType(chan, msg)
 	if a:msg[0] ==# '@'
 		let type = a:msg[1:]
@@ -380,23 +215,6 @@ func s:ShowType(chan, msg)
 	endif
 endfunc
 
-func s:SaveBufToTmp()
-	let bufnum = bufnr('%')
-	if g:ctype_mode_1_2_tmpbufentr[bufnum].modified == 1
-		try
-			call writefile(getline(1, '$'), g:ctype_mode_1_2_tmpbufentr[bufnum].tmpfile)
-			let g:ctype_mode_1_2_tmpbufentr[bufnum].modified = 0
-			let g:ctype_mode_1_2_tmpbufentr[bufnum].writerr = 0
-		catch
-			if g:ctype_mode_1_2_tmpbufentr[bufnum].writerr == 0
-				let g:ctype_mode_1_2_tmpbufentr[bufnum].writerr = 1
-				echoerr "ctype: can't write temporary file with buffer content. " .
-							\ 'Check g:ctype_tmpdir option value.'
-			endif
-		endtry
-	endif
-endfunc
-
 func s:TimerHandler(timer)
 	if s:server_pid == -1
 		return
@@ -410,9 +228,9 @@ func s:TimerHandler(timer)
 		
 		let [lnum, colnum] = getcurpos()[1:2]
 		if lnum == s:lnum && colnum == s:colnum
-			if !s:shown
+			if !s:sent
 				call ctype#GetType(function('s:ShowType'))
-				let s:shown = 1
+				let s:sent = 1
 			endif	
 		else
 			let s:lnum = lnum
@@ -454,21 +272,184 @@ func s:DeleteTmpBufEntries_OnBufDelete(bufnum)
 	endif
 endfunc
 
-" cdb facility
-if g:ctype_cdb_method > 0
-	augroup ctype-cdb
-		au!
-		if v:vim_did_enter
-			call s:LoadCDB_OnVimEnter()
-		else
-			au VimEnter * call s:LoadCDB_OnVimEnter()
+func s:ServerResponse(chan, msg)
+	if s:server_response_count == 0
+		let s:server_pid = a:msg
+	elseif s:server_response_count == 1
+		let g:ctype_socket_file = a:msg
+		augroup ctype
+			au!
+			au VimLeave * call s:StopServer_OnVimLeave()
+			if g:ctype_oncursorhold
+				exe 'au CursorHold,CursorHoldI ' . join(g:ctype_filetypes, ',') .
+							\ " call s:MainEvent('CursorHold')"
+				if g:ctype_mode == 1
+					exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
+								\ ' call s:SaveBufToTmp()'
+				endif
+			else
+				exe 'au CursorMoved,CursorMovedI ' . join(g:ctype_filetypes, ',') .
+							\ " call s:MainEvent('CursorMoved')"
+				let s:timerid = timer_start(g:ctype_timeout,
+							\ function('s:TimerHandler'), {'repeat': -1})
+			endif
+			au BufEnter * let g:ctype_type = ''
+
+			if g:ctype_mode != 0
+				exe 'au TextChanged,TextChangedI,TextChangedP ' .
+							\ join(g:ctype_filetypes, ',') .
+							\ " let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1"
+				exe 'au BufAdd ' . join(g:ctype_filetypes, ',') .
+							\ " call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))"
+				if v:vim_did_enter
+					call s:SetModAndTmp_OnVimEnter()
+				else
+					au VimEnter * call s:SetModAndTmp_OnVimEnter()
+				endif
+				exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+							\ " call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))"
+			endif
+		augroup END
+	endif
+	let s:server_response_count +=1
+endfunc
+
+func s:ServerExit(job, exit_status)
+	if a:exit_status == 0
+		return
+	endif
+
+	if g:ctype_server_showerrormsg
+		if a:exit_status == 1
+			echoerr g:ctype_prefixname . s:server_name . ": can't fork"
+		elseif a:exit_status == 2
+			echoerr g:ctype_prefixname . s:server_name . ": can't close/redirect std*"
+		elseif a:exit_status == 3
+			echoerr g:ctype_prefixname . s:server_name . ': invalid backlog'
+		elseif a:exit_status == 4
+			echoerr g:ctype_prefixname . s:server_name . ': invalid socket receive timeout'
+		elseif a:exit_status == 5
+			echoerr g:ctype_prefixname . s:server_name . ': invalid cache size'
+		elseif a:exit_status == 6
+			echoerr g:ctype_prefixname . s:server_name . ': clang frontend not found'
+		elseif a:exit_status == 7
+			echoerr g:ctype_prefixname . s:server_name . ": can't create socket file"
+		elseif a:exit_status == 8
+			echoerr g:ctype_prefixname . s:server_name . ": can't create socket"
+		elseif a:exit_status == 9
+			echoerr g:ctype_prefixname . s:server_name . ": can't assign address to socket (bind() error)"
+		elseif a:exit_status == 10
+			echoerr g:ctype_prefixname . s:server_name . ": can't mark socket as passive (listen() error)"
+		elseif a:exit_status == 11
+			echoerr g:ctype_prefixname . s:server_name . ": can't extract connection request (accept() error)"
+		elseif a:exit_status == 12
+			echoerr g:ctype_prefixname . s:server_name . ": can't set signals handler"
+		elseif a:exit_status == 13
+			echoerr g:ctype_prefixname . s:server_name . ": can't initialize cache"
 		endif
-		exe 'au BufAdd ' . join(g:ctype_filetypes, ',') . ' call s:LoadCDB_OnBufAdd()'
-		exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
-					\ ' call s:DeleteCDB_OnBufDelete()'
+		echoerr g:ctype_prefixname . s:server_name . ' exited with code = ' . a:exit_status
+	endif
+endfunc
+
+func s:ServerControlResponse(chan, msg)
+	if a:msg == 1
+		let g:ctype_servcontresp = 1
+	elseif a:msg == 2
+		let g:ctype_servcontresp = 2
+	endif
+endfunc
+
+func s:StartServer(showmsg)
+	if s:server_pid != -1
+		if a:showmsg || g:ctype_server_showerrormsg
+			echoerr g:ctype_prefixname . s:server_name . ': already run'
+		endif
+		return
+	endif
+
+	let s:sent = 0
+	let s:server_response_count = 0
+	let s:server_job = job_start(s:server_cmd,
+				\ {'out_cb': function('s:ServerResponse'),
+				\ 'exit_cb': function('s:ServerExit')})
+	if job_status(s:server_job) ==# 'fail'
+		if a:showmsg || g:ctype_server_showerrormsg
+			echoerr g:ctype_prefixname . s:server_name . ": can't start"
+		endif
+		return
+	endif
+
+	if a:showmsg
+		echom g:ctype_prefixname . s:server_name . ': started'
+	endif
+endfunc
+
+func s:StopServer(showadmsg)
+	if s:server_pid == -1
+		if a:showadmsg
+			echoerr g:ctype_prefixname . s:server_name . ': already down'
+		endif
+		return
+	endif
+	
+	call timer_stop(s:timerid)
+	augroup ctype
+		au!
 	augroup END
+	for key in keys(g:ctype_mode_1_2_tmpbufentr)
+		call delete(g:ctype_mode_1_2_tmpbufentr[key].tmpfile)
+	endfor
+	let g:ctype_mode_1_2_tmpbufentr = {}
+	let g:ctype_type = ''
+	if g:ctype_updatestl
+		call setwinvar(winnr(), '&statusline', &statusline)
+	endif
+
+	call ctype#SendControlQueryToServer(2, function('s:ServerControlResponse'))
+	" Need wait on VimLeave
+	let timeout = 1000
+	let sleeptime = 10
+	let elapsedtime = 0
+	while g:ctype_servcontresp != 2 && elapsedtime <= timeout
+		exe 'sleep ' . sleeptime . ' m'
+		let elapsedtime += sleeptime
+	endwhile
+	if g:ctype_servcontresp == 2
+		echom g:ctype_prefixname . s:server_name . ': stopped'
+	else
+		echoerr g:ctype_prefixname . s:server_name . ': no response (down?)'
+	endif
+
+	let s:server_pid = -1
+endfunc
+
+func s:RestartServer()
+	call s:StopServer(0)
+	call s:StartServer(1)
+endfunc
+
+func s:CheckServer()
+	call ctype#SendControlQueryToServer(1, function('s:ServerControlResponse'))
+	" Wait response
+	let timeout = 1000
+	let sleeptime = 10
+	let elapsedtime = 0
+	while g:ctype_servcontresp != 1 && elapsedtime <= timeout
+		exe 'sleep ' . sleeptime . ' m'
+		let elapsedtime += sleeptime
+	endwhile
+	if g:ctype_servcontresp == 1
+		echom g:ctype_prefixname . s:server_name . ' is running'
+	else
+		echoerr g:ctype_prefixname . s:server_name . ': no response (down?)'
+	endif
+endfunc
+
+if g:ctype_autostart
+	call s:StartServer(0)
 endif
 
+" cdb facility
 let g:ctype_chan_cdb = {}
 let g:ctype_cdb = {}
 
@@ -489,6 +470,20 @@ func s:DeleteCDB_OnBufDelete()
 	call remove(g:ctype_cdb, expand('<abuf>'))
 endfunc
 
+if g:ctype_cdb_method > 0
+	augroup ctype-cdb
+		au!
+		if v:vim_did_enter
+			call s:LoadCDB_OnVimEnter()
+		else
+			au VimEnter * call s:LoadCDB_OnVimEnter()
+		endif
+		exe 'au BufAdd ' . join(g:ctype_filetypes, ',') . ' call s:LoadCDB_OnBufAdd()'
+		exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+					\ ' call s:DeleteCDB_OnBufDelete()'
+	augroup END
+endif
+
 func s:UpdateCDB(bufnum)
 	let ftype = getbufvar(a:bufnum, "&filetype")
 	if ftype != 'c' && ftype != 'cpp'
@@ -505,19 +500,15 @@ func s:UpdateCDBAll()
 	endfor
 endfunc
 
+command! -bar -nargs=0 CTypeStartServer
+			\ call s:StartServer(1)
+command! -bar -nargs=0 CTypeStopServer
+			\ call s:StopServer(1)
+command! -bar -nargs=0 CTypeRestartServer
+			\ call s:RestartServer()
+command! -bar -nargs=0 CTypeCheckServer
+			\ call s:CheckServer()
 command! -bar -nargs=0 CTypeUpdateCDBCurrent
 			\ call s:UpdateCDB(bufnr('%'))
 command! -bar -nargs=0 CTypeUpdateCDBAll
 			\ call s:UpdateCDBAll()
-command! -bar -nargs=0 CTypeCheckServerState
-			\ call ctype#SendQueryToServer(1, function('s:ServerStateResponse'))
-command! -bar -nargs=0 CTypeStartServer
-			\ call s:StartServer(1)
-command! -bar -nargs=0 CTypeStopServer
-			\ if s:server_pid != -1 |
-			\ call ctype#SendQueryToServer(2, function('s:ServerStateResponse')) |
-			\ else |
-			\ echoerr g:ctype_prefixname . s:server_name . ' is already down' |
-			\ endif
-command! -bar -nargs=0 CTypeRestartServer
-			\ call s:RestartServer()

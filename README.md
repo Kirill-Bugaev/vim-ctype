@@ -64,12 +64,57 @@ Also see [options][] section below.
 
 ## Options
 
+### g:ctype_autostart
+Defines would plugin starts automatically on Vim start.
+If `0`  you can start manually by `CTypeStartServer`
+command.
+```vim
+let g:ctype_autostart = 1
+```
+(boolean, default `1`)
+
 ### g:ctype_filetypes
 There you can specify file types for which plugin will work.
 ```vim
 let g:ctype_filetypes = ['*.c', '*.cpp', '*.h']
 ```
 (list, default `['*.c', '*.cpp', '*.h']`)
+
+### ctype_oncursorhold
+If `1` plugin will request instance type on CursorHold
+and CursorHoldI Vim autocmd events instead of timer events.
+Delay between type value updates depends on `updatetime`
+Vim configuration option.
+```vim
+let g:ctype_oncursorhold = 0
+```
+(boolean, default `0`)
+
+### ctype_timeout
+Time value (in milliseconds) after which plugin will repeat
+request for type of instance under cursor and save modified
+buffer into temporary file. Make sense only when
+`g:ctype_oncursorhold = 0`.
+```vim
+let g:ctype_timeout = 100
+```
+(numeric, default `200`)
+
+### ctype_echo
+If `1` obtained type value will be echoed in Vim command line.
+```vim
+let g:ctype_echo = 0
+```
+(boolean, default `1`)
+
+### ctype_updatestl
+If `1` plugin will update statusline after type value
+obtained. Make sense when passing `g:ctype_type` variable
+value to Vim statusline.
+```vim
+let g:ctype_updatestl = 1
+```
+(boolean, default `undefined`)
 
 ### g:ctype_mode
 Defines plugin behavior on changes into buffer.
@@ -272,49 +317,25 @@ let g:ctype_cdb_showerrormsg = 0
 ```
 (boolean, default `0`)
 
-### ctype_oncursorhold
-If `1` plugin will request instance type on CursorHold
-and CursorHoldI Vim autocmd events instead of timer events.
-Delay between type value updates depends on `updatetime`
-Vim configuration option.
-```vim
-let g:ctype_oncursorhold = 0
-```
-(boolean, default `0`)
-
-### ctype_timeout
-Time value (in milliseconds) after which plugin will repeat
-request for type of instance under cursor and save modified
-buffer into temporary file. Make sense only when
-`g:ctype_oncursorhold = 0`.
-```vim
-let g:ctype_timeout = 100
-```
-(numeric, default `200`)
-
-### ctype_echo
-If `1` obtained type value will be echoed in Vim command line.
-```vim
-let g:ctype_echo = 0
-```
-(boolean, default `1`)
-
-### ctype_updatestl
-If `1` plugin will update statusline after type value
-obtained. Make sense when passing `g:ctype_type` variable
-value to Vim statusline.
-```vim
-let g:ctype_updatestl = 1
-```
-(boolean, default `undefined`)
-
 ## Commands
 
+### `CTypeStartServer`
+Starts plugin work (starts `ctype-server`).
+
+### `CTypeStopServer`
+Stops plugin work (stops `ctype-server`).
+
+### `CTypeStopServer`
+Restarts `ctype-server`.
+
+### `CTypeCheckServer`
+Checks `ctype-server` status.
+
 ### `CTypeUpdateCDBCurrent`
-Update Compilation DB arguments for current buffer.
+Updates Compilation DB arguments for current buffer.
 
 ### `CTypeUpdateCDBAll`
-Update Compilation DB arguments for all opened buffers.
+Updates Compilation DB arguments for all opened buffers.
 
 ## How to make Compilation Database
 Some C and C++ projects are compiled using `Make` and `CMake`

@@ -110,7 +110,8 @@ func ctype#GetType(callback)
 endfunc
 
 " server facility
-func ctype#SendQueryToServer(query, callback)
+func ctype#SendControlQueryToServer(query, callback)
+	let g:ctype_servcontresp = 0
 	let cmd = fnameescape(s:client_path) . ' ' .
 				\ fnameescape(g:ctype_socket_file) . ' ' . a:query
 	call job_start(cmd,
