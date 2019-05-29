@@ -2,7 +2,7 @@
 
 Plugin uses [clang][] facility to determine type of instance
 (type of variable, function, etc.) under cursor. So it is
-necessary `clang` has been installed on system where plugin
+necessary `clang` (version 8.0.0) has been installed on system where plugin
 will be used. ArchLinux users can do it with
 ```shell
 # pacman -S clang
