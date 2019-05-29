@@ -52,6 +52,7 @@ always is available in `g:ctype_type` variable, so you can direct
 output to Vim statusline:
 ```vim
 set statusline += %{g:ctype_type}
+let g:ctype_updatestl = 1
 ```
 
 Also see [options][] section below.
