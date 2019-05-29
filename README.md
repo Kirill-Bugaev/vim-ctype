@@ -54,13 +54,6 @@ output to Vim statusline:
 set statusline += %{g:ctype_type}
 ```
 
-By default plugin is switching off when buffer is modified.
-This behaviour can be changed. You can set `g:ctype_mode = 1`
-and plugin still will work when modification has been made
-in Vim Normal Mode or modification has been made in Insert Mode
-and then you switching to Normal Mode. Or you can set
-`g:ctype_mode = 2` and plugin will work in Insert Mode also.
-
 Also see [options][] section below.
 
 ## Options
