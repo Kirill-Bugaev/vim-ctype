@@ -39,7 +39,9 @@ AST file can be created only for `compilable` source code.
 Frequently, source code can't be compiled without appropriate
 command line arguments. If they are absent AST file will not be
 created and plugin will not work. Arguments can be specified in
-Compilation Database. How to make Compilation Database see below.
+Compilation Database (it also is required if not all types are 
+displayed when you set `g:ctype_getmethod = 'source'`).
+How to make Compilation Database see below.
 Even so if you set `g:ctype_getmethod = 'ast'` it should be
 noticed that in this case to use plugin in
 mode another then let `g:ctype_mode = 0` have no sense.
