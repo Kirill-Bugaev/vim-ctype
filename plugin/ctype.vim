@@ -101,6 +101,9 @@ let g:ctype_servcontresp = 0
 "	.modified
 "	.writerr
 let g:ctype_mode_1_2_tmpbufentr = {}
+" Update TU flags for buffers
+let g:ctype_updtu = {}
+let g:ctype_sent = 0
 let g:ctype_type = ''
 
 let s:plugin_path = expand('<sfile>:p:h')
@@ -117,7 +120,6 @@ let s:server_name = 'server'
 let s:server_pid = -1
 let s:server_response_count = 0
 let s:timerid = -1
-let s:sent = 0
 let s:lnum = 0
 let s:colnum = 0
 
@@ -131,7 +133,7 @@ func s:OnCursorHold()
 endfunc
 
 func s:OnCursorMoved()
-	let s:sent = 0
+	let g:ctype_sent = 0
 endfunc
 
 func s:MainEvent(event)
@@ -228,9 +230,9 @@ func s:TimerHandler(timer)
 		
 		let [lnum, colnum] = getcurpos()[1:2]
 		if lnum == s:lnum && colnum == s:colnum
-			if !s:sent
+			if !g:ctype_sent
 				call ctype#GetType(function('s:ShowType'))
-				let s:sent = 1
+				let g:ctype_sent = 1
 			endif	
 		else
 			let s:lnum = lnum
@@ -367,7 +369,7 @@ func s:StartServer(showmsg)
 		return
 	endif
 
-	let s:sent = 0
+	let g:ctype_sent = 0
 	let s:server_response_count = 0
 	let s:server_job = job_start(s:server_cmd,
 				\ {'out_cb': function('s:ServerResponse'),
@@ -381,6 +383,13 @@ func s:StartServer(showmsg)
 
 	if a:showmsg
 		echom g:ctype_prefixname . s:server_name . ': started'
+	endif
+endfunc
+
+func g:CTypeResetType()
+	let g:ctype_type = ''
+	if g:ctype_updatestl
+		call setwinvar(winnr(), '&statusline', &statusline)
 	endif
 endfunc
 
@@ -400,10 +409,7 @@ func s:StopServer(showadmsg)
 		call delete(g:ctype_mode_1_2_tmpbufentr[key].tmpfile)
 	endfor
 	let g:ctype_mode_1_2_tmpbufentr = {}
-	let g:ctype_type = ''
-	if g:ctype_updatestl
-		call setwinvar(winnr(), '&statusline', &statusline)
-	endif
+	call g:CTypeResetType()
 
 	call ctype#SendControlQueryToServer(2, function('s:ServerControlResponse'))
 	" Need wait on VimLeave
@@ -489,7 +495,7 @@ func s:UpdateCDB(bufnum)
 	if ftype != 'c' && ftype != 'cpp'
 		return
 	endif
-	
+
 	call remove(g:ctype_cdb, a:bufnum)
 	call ctypecdb#GetCDB_Entries(a:bufnum, bufname(a:bufnum))
 endfunc

@@ -242,7 +242,8 @@ recvquery(void)
 		if (read(cfd, &reparse, sizeof(reparse)) != sizeof(reparse))
 			return -1;
 
-	if (readstrquery(&clargs_s, &clargs) == -1)
+	if ( readstrquery(&clargs_s, &clargs) == -1 ||
+			read(cfd, &updtu, sizeof(updtu)) != sizeof(updtu) )
 		return -1;
 
 	return 0;
@@ -583,7 +584,7 @@ cacheop(long ci, TUi **np, TUi *prev)
 		prev = NULL;
 		++cf;
 	} else {
-		if (strcasecmp(method, "ast") != 0 && reparse) {
+		if (strcasecmp(method, "ast") != 0 && reparse && !updtu) {
 			clang_reparseTranslationUnit((*np)->tu, 0, NULL,
 					clang_defaultReparseOptions((*np)->tu));
 			return 0;
@@ -670,8 +671,9 @@ clangreq(void)
 	ci = lookup(srcf, &np, &prev);
 	if (np) {
 		/* check modification time of source file */
-		if (stbuf.st_mtim.tv_sec != np->mtim.tv_sec ||
-				stbuf.st_mtim.tv_nsec != np->mtim.tv_nsec)
+		if ( updtu ||
+				stbuf.st_mtim.tv_sec != np->mtim.tv_sec ||
+				stbuf.st_mtim.tv_nsec != np->mtim.tv_nsec )
 			mod = 1;
 	}
 

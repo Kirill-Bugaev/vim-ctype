@@ -2,7 +2,7 @@ static char *sf;	/* socket file */
 static struct sockaddr_un addr;
 static int sfd;		/* socket file descriptor */
 
-static int qt;		/* query type:
+static long qt;		/* query type:
 					   0 - type request 
 					   1 - test (check server still working)
 					   2 - shutdown server */
@@ -24,6 +24,7 @@ static long reparse = 1; 	/* TU updating option:
 								1 - reparse */
 static char *clargs = NULL; /* clang arguments */
 static qsize clargs_s = 0;
+static long updtu = 0;		/* update TU flag */
 
 static int clreqerr;			/* errors happening during clang request */
 

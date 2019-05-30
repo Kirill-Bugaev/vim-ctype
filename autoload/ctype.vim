@@ -37,14 +37,16 @@ func s:ClientExit(job, exit_status)
 		elseif a:exit_status == 11
 			echoerr g:ctype_prefixname . s:client_name . ': invalid reparse option'
 		elseif a:exit_status == 12
-			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
+			echoerr g:ctype_prefixname . s:client_name . ': invalid update TU flag'
 		elseif a:exit_status == 13
-			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't create socket"
 		elseif a:exit_status == 14
-			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't connect to server"
 		elseif a:exit_status == 15
-			echoerr g:ctype_prefixname . s:client_name . ": can't receive data from server"
+			echoerr g:ctype_prefixname . s:client_name . ": can't send request to server"
 		elseif a:exit_status == 16
+			echoerr g:ctype_prefixname . s:client_name . ": can't receive data from server"
+		elseif a:exit_status == 17
 			echoerr g:ctype_prefixname . s:client_name . ': clang request faild'
 		endif
 		echoerr g:ctype_prefixname . s:client_name . ' exited with code = ' . a:exit_status
@@ -103,6 +105,13 @@ func ctype#GetType(callback)
 	let cmd .= fnameescape(g:ctype_client_clangcmdargs)
 
 	let cmd .= '"'
+
+	if exists('g:ctype_updtu['.bufnr('%').']')
+		call remove(g:ctype_updtu, bufnr('%'))
+		let cmd .= ' 1'
+	else
+		let cmd .= ' 0'
+	endif
 
 	let s:client_job = job_start(cmd,
 				\ {'out_cb': a:callback,

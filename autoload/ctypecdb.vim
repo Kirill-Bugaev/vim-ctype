@@ -90,7 +90,10 @@ func s:ChooseCC_OnEvent(chid)
 	exe 'augroup ctype-cdb-choosecc-' . a:chid
 		au!
 	augroup END
+	let g:ctype_updtu[g:ctype_chan_cdb[a:chid].bufnr] = 1
 	call remove(g:ctype_chan_cdb, a:chid)
+	let g:ctype_sent = 0
+	call g:CTypeResetType()
 endfunc
 
 func s:CDB_Response(chan, msg)
@@ -155,11 +158,14 @@ func s:ClangCDB_Close(chan)
 			exe 'au User' .
 						\ ' *.c,*.cpp call s:ChooseCC_OnEvent(' . chid . ')'
 		augroup END
-		exe 'do ctype-cdb-choosecc-' . chid . ' User'
+		exe 'do ctype-cdb-choosecc-' . chid . ' User stub.c'
 	else
 		call s:LoadEmptyCompileCommand(g:ctype_chan_cdb[chid].bufnr,
 					\ g:ctype_chan_cdb[chid].filename)
+		let g:ctype_updtu[g:ctype_chan_cdb[chid].bufnr] = 1
 		call remove(g:ctype_chan_cdb, chid)
+		let g:ctype_sent = 0
+		call g:CTypeResetType()
 	endif
 endfunc
 

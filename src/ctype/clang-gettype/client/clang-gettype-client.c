@@ -25,6 +25,7 @@ enum errors {
 	METHERR,
 	ASTDIRERR,
 	REPARSERR,
+	UPDTUERR,
 	SOCKERR,
 	CONERR,
 	SNDERR,
@@ -108,6 +109,13 @@ parsecmdargs(int argc, char *argv[])
 		return;
 	clargs = argv[argcount++];
 	clargs_s = strlen(clargs) + 1;
+
+	if (argc == argcount)
+		return;
+	errno = 0;
+	updtu = strtol(argv[argcount++], &endptr, 10);
+	if (errno != 0 || *endptr != '\0' || (updtu != 0 && updtu != 1))
+		exit(UPDTUERR);
 }
 
 void
@@ -161,8 +169,9 @@ sendreq(void)
 			exit(SNDERR);
 		}
 	}
-	if (write(sfd, &clargs_s, sizeof(clargs_s)) != sizeof(clargs_s) ||
-			write(sfd, clargs, clargs_s) != clargs_s ) {
+	if ( write(sfd, &clargs_s, sizeof(clargs_s)) != sizeof(clargs_s) ||
+			write(sfd, clargs, clargs_s) != clargs_s ||
+			write(sfd, &updtu, sizeof(updtu)) != sizeof(updtu) ) {
 		close(sfd);
 		exit(SNDERR);
 	}
