@@ -316,16 +316,18 @@ let g:ctype_cdb_showerrormsg = 0
 ## Commands
 
 ### `CTypeStart`
-Same as `CTypeStartServer`.
+Starts plugin work. Sets Compilation Database autocommands
+and starts `ctype-server`.
 
 ### `CTypeStop`
-Same as `CTypeStopServer`.
+Stops plugin work. Removes Compilation Database autocommands
+and stops `ctype-server`.
 
 ### `CTypeStartServer`
-Starts plugin work (starts `ctype-server`).
+Starts `ctype-server`.
 
 ### `CTypeStopServer`
-Stops plugin work (stops `ctype-server`).
+Stops `ctype-server`.
 
 ### `CTypeRestartServer`
 Restarts `ctype-server`.

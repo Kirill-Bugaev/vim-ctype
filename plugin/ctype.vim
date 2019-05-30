@@ -95,6 +95,8 @@ endif
 
 let g:ctype_prefixname = 'ctype-'
 let g:ctype_socket_file = 'empty'
+let g:ctype_chan_cdb = {}
+let g:ctype_cdb = {}
 let g:ctype_servcontresp = 0
 " On mode 1 and 2 we need to save for each buffer:
 " 	.tmpfile
@@ -106,6 +108,7 @@ let g:ctype_updtu = {}
 let g:ctype_sent = 0
 let g:ctype_type = ''
 
+let s:plugin_status = 0
 let s:plugin_path = expand('<sfile>:p:h')
 
 let s:server_path = s:plugin_path . '/../bin/ctype/server'
@@ -451,14 +454,6 @@ func s:CheckServer()
 	endif
 endfunc
 
-if g:ctype_autostart
-	call s:StartServer(0)
-endif
-
-" cdb facility
-let g:ctype_chan_cdb = {}
-let g:ctype_cdb = {}
-
 func s:LoadCDB_OnVimEnter()
 	for buf_i in getbufinfo()
 		let buf_ft = getbufvar(buf_i.bufnr, '&filetype')
@@ -506,10 +501,67 @@ func s:UpdateCDBAll()
 	endfor
 endfunc
 
+func s:SetCDB_autocmd()
+	augroup ctype-cdb
+		au!
+		if v:vim_did_enter
+			call s:LoadCDB_OnVimEnter()
+		else
+			au VimEnter * call s:LoadCDB_OnVimEnter()
+		endif
+		exe 'au BufAdd ' . join(g:ctype_filetypes, ',') . ' call s:LoadCDB_OnBufAdd()'
+		exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+					\ ' call s:DeleteCDB_OnBufDelete()'
+	augroup END
+endfunc
+
+func s:StartPlugin(showmsg)
+	if s:plugin_status
+		if a:showmsg
+			echoerr 'ctype: already started'
+		endif
+		return
+	endif
+	
+	let s:plugin_status = 1
+	if g:ctype_cdb_method > 0
+		call s:SetCDB_autocmd()
+	endif
+	call s:StartServer(a:showmsg)
+
+	if a:showmsg
+		echom 'ctype: started'
+	endif
+endfunc
+
+func s:StopPlugin(showmsg)
+	if !s:plugin_status
+		if a:showmsg
+		endif
+			echoerr 'ctype: not started yet'
+		return
+	endif
+	
+	let s:plugin_status = 0
+	call s:StopServer(a:showmsg)
+	augroup ctype-cdb
+		au!
+	augroup END
+	let g:ctype_cdb = {}
+
+	if a:showmsg
+		echom 'ctype: stopped'
+	endif
+endfunc
+
+if g:ctype_autostart
+	call s:StartPlugin(0)
+endif
+
 command! -bar -nargs=0 CTypeStart
-			\ call s:StartServer(1)
+			\ call s:StartPlugin(1)
 command! -bar -nargs=0 CTypeStop
-			\ call s:StopServer(1)
+			\ call s:StopPlugin(1)
 command! -bar -nargs=0 CTypeStartServer
 			\ call s:StartServer(1)
 command! -bar -nargs=0 CTypeStopServer
