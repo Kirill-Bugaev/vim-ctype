@@ -2,19 +2,22 @@
 
 Plugin uses [clang][] facility to determine type of instance
 (type of variable, function, etc.) under cursor. So it is
-necessary `clang` (plugin have been tested with version 8.0.0)
-has been installed on system where plugin
+necessary `clang` has been installed on system where plugin
 will be used. ArchLinux users can do it with
 ```shell
 # pacman -S clang
 ```
+Main part is `clang-gettype` utility is written on C and 
+had been compiled with `libclang version 8.0.0`. If you version
+is different you may be should recompile `clang-gettype` and
+`clang-cdb` programs in `./src/ctype` directory by `make` and
+then install by `make install`.
 
-Main part is `clang-gettype` utility is written on C.
-It based on client-server architecture using Unix domain sockets.
-Client accepts source code file and location
-(line number and column) of instance as command line arguments,
-send request to server and outputs type of specified instance.
-Vimscript code wraps this functional.
+`clang-gettype` utility is based on client-server architecture
+using Unix domain sockets. Client accepts source code file and
+location (line number and column) of instance as command line
+arguments, send request to server and outputs type of specified
+instance. Vimscript code wraps this functional.
 
 Plugin works not with Vim buffers,
 but with files which buffers correspond. By default if you 
@@ -207,6 +210,10 @@ work.
 ```vim
 let g:ctype_server_backlog = 15
 ```
+If you change this option after Vim starts you should
+restart `ctype-server` by `CTypeRestartServer` command
+in order to apply changes.
+
 (numeric, default `10`)
 
 ### g:ctype_server_receivetimeout
@@ -218,6 +225,10 @@ value.
 ```vim
 let g:ctype_server_receivetimeout = 20000
 ```
+If you change this option after Vim starts you should
+restart `ctype-server` by `CTypeRestartServer` command
+in order to apply changes.
+
 (numeric, default `10000`)
 
 ### g:ctype_server_cachesize
@@ -232,6 +243,10 @@ quick response. Minimum value is 1.
 ```vim
 let g:ctype_server_cachesize = 10
 ```
+If you change this option after Vim starts you should
+restart `ctype-server` by `CTypeRestartServer` command
+in order to apply changes.
+
 (numeric, default `20`)
 
 ### g:ctype_server_clangpath
@@ -239,6 +254,10 @@ Defines path to `clang` frontend.
 ```vim
 let g:ctype_server_clangpath = '/usr/bin/clang'
 ```
+If you change this option after Vim starts you should
+restart `ctype-server` by `CTypeRestartServer` command
+in order to apply changes.
+
 (string, default `/usr/bin/clang`)
 
 ### g:ctype_server_clangpppath
@@ -246,6 +265,10 @@ Defines path to `clang++`.
 ```vim
 let g:ctype_server_clangpppath = '/usr/bin/clang++'
 ```
+If you change this option after Vim starts you should
+restart `ctype-server` by `CTypeRestartServer` command
+in order to apply changes.
+
 (string, default `/usr/bin/clang++`)
 
 ### g:ctype_server_showerrormsg
