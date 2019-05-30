@@ -8,14 +8,17 @@ if !exists('g:ctype_filetypes')
 	call add(g:ctype_filetypes, '*.cpp')
 	call add(g:ctype_filetypes, '*.h')
 endif
+let s:ctype_filetypes = deepcopy(g:ctype_filetypes)
 
 if !exists('g:ctype_oncursorhold')
 	let g:ctype_oncursorhold = 0
 endif
+let s:ctype_oncursorhold = g:ctype_oncursorhold
 
 if !exists('g:ctype_timeout')
 	let g:ctype_timeout = 200
 endif
+let s:ctype_timeout = g:ctype_timeout
 
 if !exists('g:ctype_echo')
 	let g:ctype_echo = 1
@@ -32,6 +35,7 @@ endif
 if !exists('g:ctype_mode')
 	let g:ctype_mode = 0
 endif
+let s:ctype_mode = g:ctype_mode
 
 if !exists('g:ctype_tmpdir')
 	let g:ctype_tmpdir = '/tmp'
@@ -122,7 +126,8 @@ let s:server_cmd = fnameescape(s:server_path) . ' ' .
 let s:server_name = 'server'
 let s:server_pid = -1
 let s:server_response_count = 0
-let s:timerid = -1
+let s:maintimer = -1
+let s:opttracktimer = -1
 let s:lnum = 0
 let s:colnum = 0
 
@@ -137,6 +142,12 @@ endfunc
 
 func s:OnCursorMoved()
 	let g:ctype_sent = 0
+	if g:ctype_type != ''
+		let g:ctype_type = ''
+		if g:ctype_updatestl
+			call setwinvar(winnr(), '&statusline', &statusline)
+		endif
+	endif
 endfunc
 
 func s:MainEvent(event)
@@ -220,11 +231,7 @@ func s:ShowType(chan, msg)
 	endif
 endfunc
 
-func s:TimerHandler(timer)
-	if s:server_pid == -1
-		return
-	endif
-
+func s:MainTimerHandler(timer)
 	let bt = getbufvar(bufnr('%'), '&filetype') 
 	if bt == 'c' || bt == 'cpp'
 		if g:ctype_mode == 2 || (g:ctype_mode == 1 && mode()[0] ==# 'n')
@@ -277,44 +284,48 @@ func s:DeleteTmpBufEntries_OnBufDelete(bufnum)
 	endif
 endfunc
 
+func s:SetMain_autocmd()
+	augroup ctype
+		au!
+		au VimLeave * call s:StopServer_OnVimLeave()
+		exe 'au CursorMoved,CursorMovedI ' . join(g:ctype_filetypes, ',') .
+					\ " call s:MainEvent('CursorMoved')"
+		if g:ctype_oncursorhold
+			exe 'au CursorHold,CursorHoldI ' . join(g:ctype_filetypes, ',') .
+						\ " call s:MainEvent('CursorHold')"
+			if g:ctype_mode == 1
+				exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
+							\ ' call s:SaveBufToTmp()'
+			endif
+		else
+			let s:maintimer = timer_start(g:ctype_timeout,
+						\ function('s:MainTimerHandler'), {'repeat': -1})
+		endif
+		au BufEnter * let g:ctype_type = ''
+
+		if g:ctype_mode != 0
+			exe 'au TextChanged,TextChangedI,TextChangedP ' .
+						\ join(g:ctype_filetypes, ',') .
+						\ " let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1"
+			exe 'au BufAdd ' . join(g:ctype_filetypes, ',') .
+						\ " call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))"
+			if v:vim_did_enter
+				call s:SetModAndTmp_OnVimEnter()
+			else
+				au VimEnter * call s:SetModAndTmp_OnVimEnter()
+			endif
+			exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
+						\ " call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))"
+		endif
+	augroup END
+endfunc
+
 func s:ServerResponse(chan, msg)
 	if s:server_response_count == 0
 		let s:server_pid = a:msg
 	elseif s:server_response_count == 1
 		let g:ctype_socket_file = a:msg
-		augroup ctype
-			au!
-			au VimLeave * call s:StopServer_OnVimLeave()
-			if g:ctype_oncursorhold
-				exe 'au CursorHold,CursorHoldI ' . join(g:ctype_filetypes, ',') .
-							\ " call s:MainEvent('CursorHold')"
-				if g:ctype_mode == 1
-					exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
-								\ ' call s:SaveBufToTmp()'
-				endif
-			else
-				exe 'au CursorMoved,CursorMovedI ' . join(g:ctype_filetypes, ',') .
-							\ " call s:MainEvent('CursorMoved')"
-				let s:timerid = timer_start(g:ctype_timeout,
-							\ function('s:TimerHandler'), {'repeat': -1})
-			endif
-			au BufEnter * let g:ctype_type = ''
-
-			if g:ctype_mode != 0
-				exe 'au TextChanged,TextChangedI,TextChangedP ' .
-							\ join(g:ctype_filetypes, ',') .
-							\ " let g:ctype_mode_1_2_tmpbufentr[expand('<abuf>')].modified = 1"
-				exe 'au BufAdd ' . join(g:ctype_filetypes, ',') .
-							\ " call s:SetModAndTmp_OnBufAdd(expand('<abuf>'))"
-				if v:vim_did_enter
-					call s:SetModAndTmp_OnVimEnter()
-				else
-					au VimEnter * call s:SetModAndTmp_OnVimEnter()
-				endif
-				exe 'au BufDelete ' . join(g:ctype_filetypes, ',') .
-							\ " call s:DeleteTmpBufEntries_OnBufDelete(expand('<abuf>'))"
-			endif
-		augroup END
+		call s:SetMain_autocmd()
 	endif
 	let s:server_response_count +=1
 endfunc
@@ -372,6 +383,16 @@ func s:StartServer(showmsg)
 		return
 	endif
 
+	" Update internal copies of options values
+	if s:ctype_filetypes != g:ctype_filetypes && g:ctype_cdb_method > 0 &&
+				\ s:plugin_status
+		call s:SetCDB_autocmd()
+	endif
+	let s:ctype_filetypes = deepcopy(g:ctype_filetypes)
+	let s:ctype_oncursorhold = g:ctype_oncursorhold
+	let s:ctype_mode = g:ctype_mode
+	let s:ctype_timeout = g:ctype_timeout
+
 	let g:ctype_sent = 0
 	let s:server_response_count = 0
 	let s:server_job = job_start(s:server_cmd,
@@ -390,6 +411,7 @@ func s:StartServer(showmsg)
 endfunc
 
 func g:CTypeResetType()
+	let g:ctype_sent = 0
 	let g:ctype_type = ''
 	if g:ctype_updatestl
 		call setwinvar(winnr(), '&statusline', &statusline)
@@ -404,7 +426,8 @@ func s:StopServer(showadmsg)
 		return
 	endif
 	
-	call timer_stop(s:timerid)
+	call timer_stop(s:maintimer)
+	let s:maintimer = -1
 	augroup ctype
 		au!
 	augroup END
@@ -515,6 +538,37 @@ func s:SetCDB_autocmd()
 	augroup END
 endfunc
 
+func s:OptTrackTimerHandler(timer)
+	if s:ctype_filetypes != g:ctype_filetypes && g:ctype_cdb_method > 0 
+		call s:SetCDB_autocmd()
+	endif
+
+	if s:server_pid == -1
+		return
+	endif
+
+	if s:ctype_filetypes != g:ctype_filetypes ||
+				\ s:ctype_oncursorhold != g:ctype_oncursorhold ||
+				\ s:ctype_mode != g:ctype_mode
+		if s:maintimer != -1
+			call timer_stop(s:maintimer)
+		endif
+		let s:ctype_filetypes = deepcopy(g:ctype_filetypes)
+		let s:ctype_oncursorhold = g:ctype_oncursorhold
+		let s:ctype_mode = g:ctype_mode
+		let s:ctype_timeout = g:ctype_timeout
+		call s:SetMain_autocmd()
+		call g:CTypeResetType()
+	elseif s:ctype_timeout != g:ctype_timeout && g:ctype_oncursorhold == 0
+		let s:ctype_timeout = g:ctype_timeout
+		if s:maintimer != -1
+			call timer_stop(s:maintimer)
+			let s:maintimer = timer_start(g:ctype_timeout,
+						\ function('s:MainTimerHandler'), {'repeat': -1})
+		endif
+	endif
+endfunc
+
 func s:StartPlugin(showmsg)
 	if s:plugin_status
 		if a:showmsg
@@ -523,11 +577,19 @@ func s:StartPlugin(showmsg)
 		return
 	endif
 	
+	" Update internal copies of options values
+	let s:ctype_filetypes = deepcopy(g:ctype_filetypes)
+	let s:ctype_oncursorhold = g:ctype_oncursorhold
+	let s:ctype_mode = g:ctype_mode
+	let s:ctype_timeout = g:ctype_timeout
+
 	let s:plugin_status = 1
 	if g:ctype_cdb_method > 0
 		call s:SetCDB_autocmd()
 	endif
 	call s:StartServer(a:showmsg)
+	let s:opttracktimer = timer_start(1000,
+							\ function('s:OptTrackTimerHandler'), {'repeat': -1})
 
 	if a:showmsg
 		echom 'ctype: started'
@@ -543,6 +605,7 @@ func s:StopPlugin(showmsg)
 	endif
 	
 	let s:plugin_status = 0
+	call timer_stop(s:opttracktimer)
 	call s:StopServer(a:showmsg)
 	augroup ctype-cdb
 		au!
