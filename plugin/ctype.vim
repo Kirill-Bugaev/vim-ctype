@@ -32,6 +32,10 @@ if !exists('g:ctype_updatestl')
 	endif
 endif
 
+if !exists('g:ctype_cleanonmove')
+	let g:ctype_cleanonmove = 0
+endif
+
 if !exists('g:ctype_mode')
 	let g:ctype_mode = 0
 endif
@@ -97,6 +101,10 @@ if !exists('g:ctype_cdb_showerrormsg')
 	let g:ctype_cdb_showerrormsg = 0
 endif
 
+if !exists('g:ctype_opttrack_timeout')
+	let g:ctype_opttrack_timeout = 1000
+endif
+
 let g:ctype_prefixname = 'ctype-'
 let g:ctype_socket_file = 'empty'
 let g:ctype_chan_cdb = {}
@@ -141,13 +149,7 @@ func s:OnCursorHold()
 endfunc
 
 func s:OnCursorMoved()
-	let g:ctype_sent = 0
-	if g:ctype_type != ''
-		let g:ctype_type = ''
-		if g:ctype_updatestl
-			call setwinvar(winnr(), '&statusline', &statusline)
-		endif
-	endif
+	call g:CTypeResetType()
 endfunc
 
 func s:MainEvent(event)
@@ -297,9 +299,6 @@ func s:SetMain_autocmd()
 				exe 'au InsertLeave ' . join(g:ctype_filetypes, ',') .
 							\ ' call s:SaveBufToTmp()'
 			endif
-		else
-			let s:maintimer = timer_start(g:ctype_timeout,
-						\ function('s:MainTimerHandler'), {'repeat': -1})
 		endif
 		au BufEnter * let g:ctype_type = ''
 
@@ -326,6 +325,8 @@ func s:ServerResponse(chan, msg)
 	elseif s:server_response_count == 1
 		let g:ctype_socket_file = a:msg
 		call s:SetMain_autocmd()
+		let s:maintimer = timer_start(g:ctype_timeout,
+					\ function('s:MainTimerHandler'), {'repeat': -1})
 	endif
 	let s:server_response_count +=1
 endfunc
@@ -412,9 +413,11 @@ endfunc
 
 func g:CTypeResetType()
 	let g:ctype_sent = 0
-	let g:ctype_type = ''
-	if g:ctype_updatestl
-		call setwinvar(winnr(), '&statusline', &statusline)
+	if g:ctype_cleanonmove && g:ctype_type != ''
+		let g:ctype_type = ''
+		if g:ctype_updatestl
+			call setwinvar(winnr(), '&statusline', &statusline)
+		endif
 	endif
 endfunc
 
@@ -550,14 +553,16 @@ func s:OptTrackTimerHandler(timer)
 	if s:ctype_filetypes != g:ctype_filetypes ||
 				\ s:ctype_oncursorhold != g:ctype_oncursorhold ||
 				\ s:ctype_mode != g:ctype_mode
-		if s:maintimer != -1
-			call timer_stop(s:maintimer)
-		endif
 		let s:ctype_filetypes = deepcopy(g:ctype_filetypes)
 		let s:ctype_oncursorhold = g:ctype_oncursorhold
 		let s:ctype_mode = g:ctype_mode
 		let s:ctype_timeout = g:ctype_timeout
+		if s:maintimer != -1
+			call timer_stop(s:maintimer)
+		endif
 		call s:SetMain_autocmd()
+		let s:maintimer = timer_start(g:ctype_timeout,
+					\ function('s:MainTimerHandler'), {'repeat': -1})
 		call g:CTypeResetType()
 	elseif s:ctype_timeout != g:ctype_timeout && g:ctype_oncursorhold == 0
 		let s:ctype_timeout = g:ctype_timeout
@@ -588,8 +593,10 @@ func s:StartPlugin(showmsg)
 		call s:SetCDB_autocmd()
 	endif
 	call s:StartServer(a:showmsg)
-	let s:opttracktimer = timer_start(1000,
-							\ function('s:OptTrackTimerHandler'), {'repeat': -1})
+	if g:ctype_opttrack_timeout != 0
+		let s:opttracktimer = timer_start(g:ctype_opttrack_timeout,
+								\ function('s:OptTrackTimerHandler'), {'repeat': -1})
+	endif
 
 	if a:showmsg
 		echom 'ctype: started'
@@ -605,7 +612,10 @@ func s:StopPlugin(showmsg)
 	endif
 	
 	let s:plugin_status = 0
-	call timer_stop(s:opttracktimer)
+	if s:opttracktimer != -1
+		call timer_stop(s:opttracktimer)
+		let s:opttracktimer = -1
+	endif
 	call s:StopServer(a:showmsg)
 	augroup ctype-cdb
 		au!

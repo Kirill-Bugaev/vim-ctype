@@ -92,7 +92,6 @@ func s:ChooseCC_OnEvent(chid)
 	augroup END
 	let g:ctype_updtu[g:ctype_chan_cdb[a:chid].bufnr] = 1
 	call remove(g:ctype_chan_cdb, a:chid)
-	let g:ctype_sent = 0
 	call g:CTypeResetType()
 endfunc
 
@@ -164,7 +163,6 @@ func s:ClangCDB_Close(chan)
 					\ g:ctype_chan_cdb[chid].filename)
 		let g:ctype_updtu[g:ctype_chan_cdb[chid].bufnr] = 1
 		call remove(g:ctype_chan_cdb, chid)
-		let g:ctype_sent = 0
 		call g:CTypeResetType()
 	endif
 endfunc

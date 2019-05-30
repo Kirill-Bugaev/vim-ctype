@@ -107,13 +107,25 @@ let g:ctype_echo = 0
 (boolean, default `1`)
 
 ### ctype_updatestl
-If `1` plugin will update statusline after type value
+If `1` plugin will update Vim statusline after type value
 obtained. Make sense when passing `g:ctype_type` variable
-value to Vim statusline.
+value to statusline.
 ```vim
 let g:ctype_updatestl = 1
 ```
 (boolean, default `undefined`)
+
+### ctype_cleanonmove
+If `1` plugin will clean current value of `g:ctype_type`
+variable and update statusline on `CursorMoved` and 
+`CursorMovedI` autocmd events. It is useful with 
+`g:ctype_oncursorhold = 1` or high value of
+`g:ctype_timeout` option, but may be cause of blinking
+otherwise.
+```vim
+let g:ctype_cleanonmove = 1
+```
+(boolean, default `0`)
 
 ### g:ctype_mode
 Defines plugin behavior on changes into buffer.
@@ -335,6 +347,20 @@ facility be shown.
 let g:ctype_cdb_showerrormsg = 0
 ```
 (boolean, default `0`)
+
+### g:ctype_opttrack_timeout
+Options tracker timer's timeout (in milliseconds).
+
+Changing of `g:ctype_filetypes`, `g:ctype_oncursorhold`,
+`g:ctype_timeout` and `g:ctype_mode` options
+requires reset of autocommands and main timer. So plugin saves
+local values of these options and checks changes on timer.
+It allows change options after Vim start without restarting
+plugin. If you don't need it set `g:ctype_opttrack_timeout = 0`.
+```vim
+let g:ctype_opttrack_timeout = 0
+```
+(numeric, default `1000`)
 
 ## Commands
 
