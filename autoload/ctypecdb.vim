@@ -1,3 +1,5 @@
+" This file is part of vim-ctype plugin
+"
 let s:plugin_path = expand('<sfile>:p:h')
 let s:clangcdb_path = s:plugin_path . '/../bin/ctype/cdb'
 let s:clangcdb_name = 'cdb'

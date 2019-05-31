@@ -1,3 +1,5 @@
+" This file is part of vim-ctype plugin
+"
 let s:plugin_path = expand('<sfile>:p:h')
 let s:client_path = s:plugin_path . '/../bin/ctype/client'
 let s:client_name = 'client'
@@ -81,15 +83,21 @@ func ctype#GetType(callback)
 
 	let cmd .=  ' ' . lnum . ' ' . colnum
 
-	if getbufvar(bufnr('%'), '&filetype') == 'cpp'
+	let ftype = getbufvar(bufnr('%'), '&filetype')
+	if ftype == 'cpp'
 		let cmd .= ' cpp'
 	else
 		let cmd .= ' c'
 	endif
 
-	let cmd .= ' ' . g:ctype_getmethod
+	if ftype == 'cpp'
+		let method = 'ast'
+	else
+		let method = g:ctype_getmethod
+	endif
+	let cmd .= ' ' . method
 
-	if g:ctype_getmethod ==? 'ast'
+	if method ==? 'ast'
 		let cmd .= ' ' .g:ctype_astdir
 	else
 		let cmd .= ' ' . g:ctype_reparsetu

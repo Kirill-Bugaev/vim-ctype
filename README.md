@@ -37,18 +37,19 @@ plugin will parse source code directly without generating AST
 file, but should be noticed that for parsing of C++ code AST
 file is require, so it can be not appropriate.
 
-To switch on support of C++ code you should set 
-`g:ctype_getmethod = 'ast'`. But hold your horses!
-AST file can be created only for `compilable` source code.
-Frequently, source code can't be compiled without appropriate
-command line arguments. If they are absent AST file will not be
-created and plugin will not work. Arguments can be specified in
-Compilation Database (it also is required if not all types are 
-displayed when you set `g:ctype_getmethod = 'source'`).
-How to make Compilation Database see below.
-Even so if you set `g:ctype_getmethod = 'ast'` it should be
-noticed that in this case to use plugin in
-mode another then let `g:ctype_mode = 0` have no sense.
+For C++ code parsing AST file is required (libclang has a problem
+with parsing C++ code from source file directly). Plugin generates
+it automatically (for C++ code it will be generated regardless of
+`g:ctype_getmethod` option value). AST file can be created only
+for `compilable` source code. Frequently, source code can't be
+compiled without appropriate command line arguments. If they are
+absent AST file will not be created and plugin will not work.
+Arguments can be specified in Compilation Database (it also is
+required if not all types are displayed when you set
+`g:ctype_getmethod = 'source'`). How to make Compilation Database
+see below. If you set `g:ctype_getmethod = 'ast'` it
+should be noticed that in this case to use plugin in
+mode another then let `g:ctype_mode = 0` have little sense.
 
 By default plugin shows instance type in Vim command line,
 but this behavior can be changed. Last received instance type
@@ -142,13 +143,13 @@ in Normal Mode.
 Units will be updated on timer after each modification
 in both modes.
 
-It has no sense to use modes `1` and `2` with
+It has little sense to use modes `1` and `2` with
 `g:ctype_getmethod = 'ast'` (see below) because this
 method requires compilable source code which is not
 always realized when you make corrections. So it is
 better to set `g:ctype_getmethod = 'source'` (default
 value) in this case. But you should to know that for
-C++ code `g:ctype_getmethod = 'ast'` is required.
+C++ code AST file will be generated anyway.
 
 Also these modes require to save modified buffer in
 temporary file to create Translation Unit. It may slow
@@ -179,7 +180,7 @@ which is used by plugin server to obtain required types.
 `"source"` means retrieve data from source file directly
 
 Notice that for C++ code parsing AST file is required, so 
-plugin will not work into C++ buffers with
+it will be created regardless of this option value.
 `g:ctype_getmethod = 'source'`. 
 ```vim
 let g:ctype_getmethod = 'ast'
@@ -190,7 +191,6 @@ let g:ctype_getmethod = 'ast'
 Defines temporary directory where AST files will be
 created.
 
-Make sense only with `g:ctype_getmethod = 'ast'`.
 ```vim
 let g:ctype_astdir = '/dev/shm'
 ```
