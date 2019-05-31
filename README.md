@@ -1,6 +1,6 @@
 # vim-ctype
 
-<img align="center" src="https://github.com/Kirill-Bugaev/vim-ctype/blob/master/vim-ctype.png" alt="screenshot">
+<div style="text-align:center"><img src="https://github.com/Kirill-Bugaev/vim-ctype/blob/master/vim-ctype.png" alt="screenshot"/></div>
 
 Plugin uses [clang][] facility to determine type of instance
 (type of variable, function, etc.) under cursor. So it is
