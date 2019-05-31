@@ -416,7 +416,7 @@ in project root directory. It contains command line arguments
 for compilation process well then required for making `AST`
 file. If `g:ctype_cdb_method` option is not `0`
 plugin will find compilation arguments in this file
-automatically and use it for making `AST`.
+automatically and use it during parsing.
 
 ### Make
 If project uses `Make` for compilation process Compilation
