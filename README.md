@@ -152,7 +152,7 @@ It has little sense to use modes `1` and `2` with
 method requires compilable source code which is not
 always realized when you make corrections. So it is
 better to set `g:ctype_getmethod = 'source'` (default
-value) in this case. But you should to know that for
+value) in this case. But you should be aware that for
 C++ code AST file will be generated anyway.
 
 Also these modes require to save modified buffer in
