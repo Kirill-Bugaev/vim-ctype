@@ -1,7 +1,9 @@
 # vim-ctype
 
 ![screenshot](https://github.com/Kirill-Bugaev/vim-ctype/blob/master/vim-ctype.png)
-
+<p align="center">
+  <img src="https://github.com/Kirill-Bugaev/vim-ctype/blob/master/vim-ctype.png"/>
+</p>
 Plugin uses [clang][] facility to determine type of instance
 (type of variable, function, etc.) under cursor. So it is
 necessary `clang` has been installed on system where plugin
