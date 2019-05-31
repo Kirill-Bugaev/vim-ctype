@@ -1,5 +1,7 @@
 # vim-ctype
 
+![screenshot](https://github.com/Kirill-Bugaev/vim-ctype/vim-ctype.png)
+
 Plugin uses [clang][] facility to determine type of instance
 (type of variable, function, etc.) under cursor. So it is
 necessary `clang` has been installed on system where plugin
@@ -37,7 +39,7 @@ plugin will parse source code directly without generating AST
 file, but should be noticed that for parsing of C++ code AST
 file is require, so it can be not appropriate.
 
-For C++ code parsing AST file is required (libclang has a problem
+For C++ code parsing AST file is required (I have a problem
 with parsing C++ code from source file directly). Plugin generates
 it automatically (for C++ code it will be generated regardless of
 `g:ctype_getmethod` option value). AST file can be created only
