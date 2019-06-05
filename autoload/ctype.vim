@@ -90,7 +90,9 @@ func ctype#GetType(callback)
 		let cmd .= ' c'
 	endif
 
-	if ftype == 'cpp' && expand('%:e') !=? 'h'
+	if expand('%:e') ==? 'h'
+		let method = 'source'
+	elseif ftype == 'cpp'
 		let method = 'ast'
 	else
 		let method = g:ctype_getmethod
