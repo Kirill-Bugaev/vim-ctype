@@ -197,7 +197,7 @@ func s:SaveBufToTmp()
 endfunc
 
 func s:EchoClangRequestError(errcode)
-	if g:ctype_server_showerrormsg && (!exists('b:ctype_lastclreqerr') ||
+	if g:ctype_client_showerrormsg && (!exists('b:ctype_lastclreqerr') ||
 				\ b:ctype_lastclreqerr != a:errcode)
 		if a:errcode == 1
 			let msg = "can't get source file status (stat() C function)"
